@@ -253,6 +253,16 @@ export class SubstackClient {
       `POST /api/v1/drafts/${id}/publish`,
     );
   }
+
+  /** Reads the fields an update must be verified against afterwards. */
+  async draftFields(id: number): Promise<{ slug: string | null; draft_section_id: number | null; draft_subtitle: string | null }> {
+    const raw = asRecord(await this.request('GET', `/api/v1/drafts/${id}`), `GET /api/v1/drafts/${id}`);
+    return {
+      slug: typeof raw['slug'] === 'string' && raw['slug'] !== '' ? raw['slug'] : null,
+      draft_section_id: typeof raw['draft_section_id'] === 'number' ? raw['draft_section_id'] : null,
+      draft_subtitle: typeof raw['draft_subtitle'] === 'string' ? raw['draft_subtitle'] : null,
+    };
+  }
 }
 
 /** Maps a raw post object from either listing endpoint to the summary shape. */
