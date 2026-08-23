@@ -4,22 +4,26 @@ import { convertMarkdownToDocument } from '../conversion/markdown.js';
 import { validateDocument } from '../conversion/schema.js';
 import type { Subcommand } from '../commands.js';
 import type { Env } from '../env/types.js';
-import { EXIT_FAILURE, EXIT_SUCCESS, UsageError } from '../exit.js';
+import { EXIT_AUTH, EXIT_SUCCESS, UsageError } from '../exit.js';
+import { loadConfig } from '../profiles/config.js';
+import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
+import { AuthError, SubstackClient } from './api.js';
 
 export const createUsage =
-  'usage: substackctl post create <file> [--dry-run] [--title <t>] [--subtitle <s>]\n' +
-  '                                  [--section <name>] [--cover <url>] [--audience <a>] [--slug <slug>]';
+  'usage: substackctl post create <file> [--profile <name>] [--dry-run] [--title <t>]\n' +
+  '                                  [--subtitle <s>] [--section <name>] [--cover <url>]\n' +
+  '                                  [--audience <a>] [--slug <slug>]';
 
 const AUDIENCES: Record<string, true> = { everyone: true, only_paid: true, only_free: true, founding: true };
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export const createCommand: Subcommand = {
   name: 'create',
-  description: 'convert a Markdown file into a Substack document and preview the draft request',
+  description: 'convert a Markdown file into a Substack document and send it as a new draft',
   usage: createUsage,
   async run(argv, env) {
     const parsed = parseArgv(argv, {
-      strings: ['title', 'subtitle', 'section', 'cover', 'audience', 'slug'],
+      strings: ['title', 'subtitle', 'section', 'cover', 'audience', 'slug', 'profile'],
       booleans: ['dry-run'],
     });
     const file = parsed.positionals[0];
@@ -29,10 +33,7 @@ export const createCommand: Subcommand = {
     if (parsed.positionals.length > 1) {
       throw new UsageError(`unexpected argument: ${parsed.positionals[1]}`);
     }
-    if (parsed.values.get('dry-run') !== true) {
-      env.stderr.write('sending is not implemented yet; run with --dry-run to preview the request\n');
-      return EXIT_FAILURE;
-    }
+    const dryRun = parsed.values.get('dry-run') === true;
     let contents: string;
     try {
       contents = await env.fs.readFile(file);
@@ -73,29 +74,127 @@ export const createCommand: Subcommand = {
     if (violations.length > 0) {
       throw new Error(`document failed local schema validation: ${violations[0]}`);
     }
-    const body: Record<string, unknown> = {
-      draft_title: title,
-      draft_subtitle: subtitle,
-      draft_body: JSON.stringify(document),
-      draft_bylines: [{ id: null, is_guest: false }],
-      type: 'newsletter',
-      audience,
-    };
-    if (cover !== undefined) {
-      body['cover_image'] = cover;
+    if (dryRun) {
+      printDryRun(env, { title, subtitle, document, audience, cover, slug, section });
+      return EXIT_SUCCESS;
     }
-    const request: Record<string, unknown> = { method: 'POST', url: '/api/v1/drafts', body };
-    if (slug !== undefined || section !== undefined) {
-      const afterCreate: Record<string, string> = {};
-      if (slug !== undefined) {
-        afterCreate['slug'] = slug;
+    const config = await loadConfig(env);
+    const profile = resolveProfile(env, config, flag('profile'));
+    warnIfCookieStale(env, profile);
+    env.stderr.write(`substackctl: creating a draft on profile ${profile.name ?? 'environment'} (${profile.publication})\n`);
+    const client = new SubstackClient(env, profile.publication, profile.cookie);
+    try {
+      const bylineUserId = await client.ownerUserId();
+      const draft = await client.createDraft({
+        title,
+        subtitle,
+        body: JSON.stringify(document),
+        bylineUserId,
+        audience,
+        ...(cover === undefined ? {} : { coverImage: cover }),
+      });
+      const sectionId = section === undefined ? undefined : await sectionIdFor(client, section);
+      if (slug !== undefined || sectionId !== undefined) {
+        const patch: Record<string, unknown> = {};
+        if (slug !== undefined) {
+          patch['slug'] = slug;
+        }
+        if (sectionId !== undefined) {
+          patch['draft_section_id'] = sectionId;
+        }
+        await client.updateDraft(draft.id, patch);
+        if (sectionId !== undefined) {
+          await verifySectionAssignment(client, draft.id, sectionId, section!);
+        }
       }
-      if (section !== undefined) {
-        afterCreate['section'] = section;
+      const created = await client.getDraft(draft.id);
+      env.stdout.write(`draft ${created.id}\n`);
+      if (created.slug !== null) {
+        env.stdout.write(`url: ${profile.publication}/p/${created.slug}\n`);
       }
-      request['after_create'] = afterCreate;
+      return EXIT_SUCCESS;
+    } catch (error) {
+      if (error instanceof AuthError) {
+        env.stderr.write(`substackctl: ${error.message}\n`);
+        return EXIT_AUTH;
+      }
+      throw error;
     }
-    env.stdout.write(JSON.stringify(request, null, 2) + '\n');
-    return EXIT_SUCCESS;
   },
 };
+
+/** Resolves a section by name; the API knows sections by id, not name. */
+async function sectionIdFor(client: SubstackClient, section: string): Promise<number> {
+  const sections = await client.listSections();
+  const match = sections.find((candidate) => candidate.name === section);
+  if (match === undefined) {
+    const known = sections.map((candidate) => `"${candidate.name}"`).join(', ');
+    throw new Error(
+      `unknown section "${section}"${known === '' ? ' (the publication has no sections)' : `; known sections: ${known}`}`,
+    );
+  }
+  return match.id;
+}
+
+/**
+ * Re-reads the draft and checks `draft_section_id`, the field the API
+ * actually populates, against the intended section id. The `section_id`
+ * field on the same response always reads null and would make every
+ * assignment look failed.
+ */
+async function verifySectionAssignment(
+  client: SubstackClient,
+  draftId: number,
+  sectionId: number,
+  section: string,
+): Promise<void> {
+  const verified = await client.getDraft(draftId);
+  if (verified.draft_section_id !== sectionId) {
+    throw new Error(
+      `the section assignment could not be verified: draft_section_id is ` +
+        `${verified.draft_section_id === null ? 'empty' : verified.draft_section_id}, ` +
+        `expected ${sectionId} for "${section}"`,
+    );
+  }
+}
+
+/**
+ * The dry-run preview: the request as it would be sent, with the byline id
+ * shown as null because it is looked up from the API only when sending.
+ */
+function printDryRun(
+  env: Env,
+  post: {
+    title: string;
+    subtitle: string;
+    document: unknown;
+    audience: string;
+    cover?: string;
+    slug?: string;
+    section?: string;
+  },
+): void {
+  const body: Record<string, unknown> = {
+    draft_title: post.title,
+    draft_subtitle: post.subtitle,
+    draft_body: JSON.stringify(post.document),
+    draft_bylines: [{ id: null, is_guest: false }],
+    type: 'newsletter',
+    audience: post.audience,
+  };
+  if (post.cover !== undefined) {
+    body['cover_image'] = post.cover;
+  }
+  const request: Record<string, unknown> = { method: 'POST', url: '/api/v1/drafts', body };
+  if (post.slug !== undefined || post.section !== undefined) {
+    const afterCreate: Record<string, string> = {};
+    if (post.slug !== undefined) {
+      afterCreate['slug'] = post.slug;
+    }
+    if (post.section !== undefined) {
+      afterCreate['section'] = post.section;
+    }
+    request['after_create'] = afterCreate;
+  }
+  env.stdout.write(JSON.stringify(request, null, 2) + '\n');
+}
