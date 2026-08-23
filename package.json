@@ -1,0 +1,21 @@
+{
+  "name": "substackctl",
+  "version": "0.1.0",
+  "description": "Command-line tool that manages posts on Substack and reads other people's newsletters",
+  "type": "module",
+  "bin": {
+    "substackctl": "dist/bin/substackctl.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build",
+    "test": "node --test \"dist/test/**/*.test.js\""
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
