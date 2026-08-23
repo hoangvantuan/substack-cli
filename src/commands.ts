@@ -1,4 +1,5 @@
 import type { Env } from './env/types.js';
+import { crawlAllCommand, crawlCommand } from './reading/crawl.js';
 import { scanCommand } from './reading/scan.js';
 import { profileGroup } from './profiles/profile.js';
 
@@ -25,7 +26,7 @@ export const groups: CommandGroup[] = [
     name: 'feed',
     description: 'scan publications without authentication',
     usage: 'usage: substackctl feed <subcommand> [options]',
-    subcommands: [scanCommand],
+    subcommands: [scanCommand, crawlCommand, crawlAllCommand],
   },
   profileGroup,
 ];
