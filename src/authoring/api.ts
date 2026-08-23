@@ -222,6 +222,37 @@ export class SubstackClient {
     const dated = typeof raw['post_date'] === 'string' && raw['post_date'] !== '';
     return { published, scheduled: !published && dated };
   }
+
+  /**
+   * The pre-publish check the Substack web app runs before publishing. The
+   * endpoint is flaky in practice, so callers must treat any failure here as
+   * a warning to log, never as a reason to stop.
+   */
+  async prepublishCheck(id: number): Promise<{ errors: unknown[]; suggestions: unknown[] }> {
+    const raw = asRecord(
+      await this.request('GET', `/api/v1/drafts/${id}/prepublish`),
+      `GET /api/v1/drafts/${id}/prepublish`,
+    );
+    return {
+      errors: Array.isArray(raw['errors']) ? raw['errors'] : [],
+      suggestions: Array.isArray(raw['suggestions']) ? raw['suggestions'] : [],
+    };
+  }
+
+  /**
+   * Takes a draft public. With `sendEmail` false the post appears on the web
+   * without any email going out; with true the email goes to the audience.
+   * Publishing cannot be undone.
+   */
+  async publishDraft(id: number, options: { sendEmail: boolean }): Promise<Draft> {
+    return asDraft(
+      await this.request('POST', `/api/v1/drafts/${id}/publish`, {
+        send: options.sendEmail,
+        share_automatically: false,
+      }),
+      `POST /api/v1/drafts/${id}/publish`,
+    );
+  }
 }
 
 /** Maps a raw post object from either listing endpoint to the summary shape. */
