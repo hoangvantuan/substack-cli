@@ -36,6 +36,13 @@ export interface FileSystem {
   /** Creates the directory and any missing parents. */
   mkdir(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
+  /**
+   * Reads a whole file and returns it base64-encoded so binary assets such
+   * as images survive the read without a UTF-8 round trip corrupting bytes.
+   * Optional because only flows that read binary assets (image upload) need
+   * it; substituted test environments without it never exercise those.
+   */
+  readFileBase64?(path: string): Promise<string>;
 }
 
 export interface StdinSource {

@@ -326,8 +326,12 @@ test('an image mixed with other paragraph content is rejected by name', () => {
   reject('text before ![img](https://example.com/i.png) text after', 'image inside a paragraph');
 });
 
-test('a local image src is rejected because upload is not available', () => {
-  reject('![local](./diagram.png)', 'local image');
+test('a local image src converts and stays in place for the upload step', () => {
+  const { document } = convertMarkdownToDocument('![local](./diagram.png)');
+  assert.equal(document.content[0]?.type, 'captionedImage');
+  const image = document.content[0]?.content?.[0];
+  assert.equal(image?.type, 'image2');
+  assert.equal(image?.attrs?.['src'], './diagram.png');
 });
 
 test('a table is rejected by name', () => {

@@ -302,6 +302,50 @@ export class SubstackClient {
   async unscheduleRelease(id: number): Promise<void> {
     await this.request('DELETE', `/api/v1/drafts/${id}/scheduled_release`);
   }
+
+  /**
+   * Uploads one image and returns its hosted URL. Observed against the live
+   * API (issue #8): POST /api/v1/image takes a single urlencoded form field
+   * "image" whose value is either an http(s) URL to re-host or a data URI
+   * carrying the file bytes; it answers with {id, url, contentType, bytes,
+   * imageWidth, imageHeight} where url is the permanent hosted location.
+   */
+  async uploadImage(source: string): Promise<{ id: number; url: string }> {
+    const response = await requestWithRetry(
+      this.env,
+      {
+        url: `${this.base}/api/v1/image`,
+        method: 'POST',
+        headers: {
+          cookie: `substack.sid=${this.cookie}`,
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: `image=${encodeURIComponent(source)}`,
+      },
+      { retry: this.retry },
+    );
+    if (response.status === 401 || response.status === 403) {
+      throw new AuthError(
+        `the publication rejected the cookie (HTTP ${response.status}); ` +
+          `refresh it with: substackctl profile login`,
+      );
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(response.body);
+    } catch {
+      throw new Error(`POST /api/v1/image answered HTTP ${response.status} with a body that is not JSON`);
+    }
+    const record = asRecord(parsed, 'POST /api/v1/image');
+    if (!(response.status >= 200 && response.status < 300) || typeof record['url'] !== 'string') {
+      const detail = errorDetail(record);
+      throw new Error(`POST /api/v1/image failed with HTTP ${response.status}${detail === '' ? '' : `: ${detail}`}`);
+    }
+    return {
+      id: typeof record['id'] === 'number' ? record['id'] : -1,
+      url: record['url'],
+    };
+  }
 }
 
 /** Maps a raw post object from either listing endpoint to the summary shape. */

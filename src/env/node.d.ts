@@ -24,6 +24,8 @@ declare const process: {
 
 declare module 'node:fs/promises' {
   export function readFile(path: string, encoding: 'utf8'): Promise<string>;
+  /** Binary read; only the base64 projection of the buffer is declared. */
+  export function readFile(path: string): Promise<{ toString(encoding: 'base64'): string }>;
   export function writeFile(
     path: string,
     contents: string,
@@ -32,9 +34,14 @@ declare module 'node:fs/promises' {
   export function mkdir(path: string, options: { recursive: true }): Promise<void>;
   export function stat(path: string): Promise<unknown>;
 }
+declare const Buffer: {
+  /** Decodes text (typically base64) into raw bytes for binary file writes. */
+  from(data: string, encoding?: string): Uint8Array;
+};
+
 declare module 'node:fs' {
   export function mkdtempSync(prefix: string): string;
-  export function writeFileSync(path: string, data: string): void;
+  export function writeFileSync(path: string, data: string | Uint8Array): void;
   export function readFileSync(path: string | URL, encoding: 'utf8'): string;
   export function rmSync(path: string, options?: { recursive?: boolean }): void;
 }
@@ -43,6 +50,11 @@ declare module 'node:path' {
 }
 declare module 'node:child_process' {
   export function execFileSync(file: string, args: string[], options: { encoding: string; env: Record<string, string | undefined> }): string;
+  export function spawnSync(
+    file: string,
+    args: string[],
+    options: { encoding: string; env: Record<string, string | undefined> },
+  ): { status: number | null; stdout: string; stderr: string };
 }
 declare module 'node:os' {
   export function tmpdir(): string;
@@ -59,6 +71,7 @@ declare module 'node:test' {
 declare module 'node:assert/strict' {
   const assert: {
     equal(actual: unknown, expected: unknown, message?: string): void;
+    notEqual(actual: unknown, expected: unknown, message?: string): void;
     deepEqual(actual: unknown, expected: unknown, message?: string): void;
     ok(value: unknown, message?: string): asserts value;
     match(value: string, regexp: RegExp, message?: string): void;

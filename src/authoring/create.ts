@@ -7,6 +7,7 @@ import type { Env } from '../env/types.js';
 import { EXIT_AUTH, EXIT_SUCCESS, UsageError } from '../exit.js';
 import { loadConfig } from '../profiles/config.js';
 import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
+import { dirnameOf, localImageSources, uploadLocalImages } from './images.js';
 import { AuthError, SubstackClient } from './api.js';
 
 export const createUsage =
@@ -75,6 +76,13 @@ export const createCommand: Subcommand = {
       throw new Error(`document failed local schema validation: ${violations[0]}`);
     }
     if (dryRun) {
+      const locals = localImageSources(document);
+      if (locals.length > 0) {
+        env.stderr.write(
+          `warning: ${locals.length} local image${locals.length === 1 ? '' : 's'} ` +
+            `(${locals.join(', ')}) will be uploaded when the post is sent\n`,
+        );
+      }
       printDryRun(env, { title, subtitle, document, audience, cover, slug, section });
       return EXIT_SUCCESS;
     }
@@ -85,6 +93,10 @@ export const createCommand: Subcommand = {
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
       const bylineUserId = await client.ownerUserId();
+      // Local body images are uploaded and rewritten to hosted URLs before
+      // the draft is created, so a missing file stops the command instead of
+      // producing a post with a broken image.
+      await uploadLocalImages(env, client, document, dirnameOf(file));
       const draft = await client.createDraft({
         title,
         subtitle,

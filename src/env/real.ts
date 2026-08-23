@@ -7,6 +7,7 @@ export function createRealEnv(): Env {
     http: { request: (request) => realRequest(request) },
     fs: {
       readFile: (path) => readFile(path, 'utf8'),
+      readFileBase64: async (path) => (await readFile(path)).toString('base64'),
       writeFile: (path, contents, options) =>
         writeFile(path, contents, { encoding: 'utf8', mode: options?.mode }),
       mkdir: (path) => mkdir(path, { recursive: true }),

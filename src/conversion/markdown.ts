@@ -378,9 +378,8 @@ function paragraphNode(lines: Line[], context: Warnings): PMNode {
 }
 
 function captionedImage(image: ImageInline, context: Warnings): PMNode {
-  if (!/^https?:\/\//i.test(image.src)) {
-    throw new ConversionError(`local image is not supported (line ${image.line}): image src must be an http(s) URL`);
-  }
+  // A non-http(s) src stays as written here: the send flow uploads local
+  // files and rewrites these srcs to hosted URLs (issue #8).
   if (image.alt === '') {
     context.messages.push(`image without alt text (line ${image.line})`);
   }
