@@ -3,6 +3,8 @@ import { crawlAllCommand, crawlCommand } from './reading/crawl.js';
 import { createCommand } from './authoring/create.js';
 import { listCommand } from './authoring/list.js';
 import { deleteCommand } from './authoring/delete.js';
+import { scheduleCommand } from './authoring/schedule.js';
+import { unscheduleCommand } from './authoring/unschedule.js';
 import { scanCommand } from './reading/scan.js';
 import { profileGroup } from './profiles/profile.js';
 
@@ -36,6 +38,6 @@ export const groups: CommandGroup[] = [
     name: 'post',
     description: 'author posts on your own publication',
     usage: 'usage: substackctl post <subcommand> [options]',
-    subcommands: [createCommand, listCommand, deleteCommand],
+    subcommands: [createCommand, listCommand, deleteCommand, scheduleCommand, unscheduleCommand],
   },
 ];

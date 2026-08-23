@@ -222,6 +222,45 @@ export class SubstackClient {
     const dated = typeof raw['post_date'] === 'string' && raw['post_date'] !== '';
     return { published, scheduled: !published && dated };
   }
+
+  /**
+   * Reads the active release schedule of a post: an empty array when the
+   * post has no scheduled release, otherwise the pending trigger time and
+   * the audience it will go out to.
+   */
+  async getScheduledRelease(
+    id: number,
+  ): Promise<Array<{ triggerAt: string; postAudience: string | null }>> {
+    const raw = asArray(
+      await this.request('GET', `/api/v1/drafts/${id}/scheduled_release`),
+      `GET /api/v1/drafts/${id}/scheduled_release`,
+    );
+    return raw.map((entry) => ({
+      triggerAt: typeof entry['trigger_at'] === 'string' ? entry['trigger_at'] : '',
+      postAudience: typeof entry['post_audience'] === 'string' ? entry['post_audience'] : null,
+    }));
+  }
+
+  /**
+   * Sets a future release time through the dedicated release endpoint.
+   * This never publishes on its own: the API holds the draft until the
+   * trigger time arrives, so a future date stays a future date.
+   * Requires the draft to have been saved once with `section_chosen`.
+   */
+  async scheduleRelease(id: number, triggerAt: string, audience: string): Promise<Draft> {
+    return asDraft(
+      await this.request('POST', `/api/v1/drafts/${id}/scheduled_release`, {
+        trigger_at: triggerAt,
+        post_audience: audience,
+      }),
+      `POST /api/v1/drafts/${id}/scheduled_release`,
+    );
+  }
+
+  /** Removes the scheduled release; the post returns to being a draft. */
+  async unscheduleRelease(id: number): Promise<void> {
+    await this.request('DELETE', `/api/v1/drafts/${id}/scheduled_release`);
+  }
 }
 
 /** Maps a raw post object from either listing endpoint to the summary shape. */
