@@ -6,6 +6,8 @@ import { deleteCommand } from './authoring/delete.js';
 import { publishCommand } from './authoring/publish.js';
 import { updateCommand } from './authoring/update.js';
 import { sectionGroup } from './authoring/section.js';
+import { scheduleCommand } from './authoring/schedule.js';
+import { unscheduleCommand } from './authoring/unschedule.js';
 import { scanCommand } from './reading/scan.js';
 import { profileGroup } from './profiles/profile.js';
 
@@ -39,7 +41,7 @@ export const groups: CommandGroup[] = [
     name: 'post',
     description: 'author posts on your own publication',
     usage: 'usage: substackctl post <subcommand> [options]',
-    subcommands: [createCommand, listCommand, deleteCommand, publishCommand, updateCommand],
+    subcommands: [createCommand, listCommand, deleteCommand, publishCommand, updateCommand, scheduleCommand, unscheduleCommand],
   },
   sectionGroup,
 ];
