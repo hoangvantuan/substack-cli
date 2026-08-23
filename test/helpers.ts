@@ -37,7 +37,7 @@ export function makeEnv(
       mkdir: () => Promise.reject(new Error('fs is not available in tests')),
       exists: () => Promise.reject(new Error('fs is not available in tests')),
     },
-    stdin: { read: () => Promise.resolve('') },
+    stdin: { read: () => Promise.resolve(''), readHidden: () => Promise.resolve('') },
     stdout: { write: (text) => void out.push(text) },
     stderr: { write: (text) => void err.push(text) },
     clock: () => 1_750_000_000_000,

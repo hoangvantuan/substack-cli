@@ -7,7 +7,8 @@ export function createRealEnv(): Env {
     http: { request: (request) => realRequest(request) },
     fs: {
       readFile: (path) => readFile(path, 'utf8'),
-      writeFile: (path, contents) => writeFile(path, contents, 'utf8'),
+      writeFile: (path, contents, options) =>
+        writeFile(path, contents, { encoding: 'utf8', mode: options?.mode }),
       mkdir: (path) => mkdir(path, { recursive: true }),
       exists: async (path) => {
         try {
@@ -18,7 +19,7 @@ export function createRealEnv(): Env {
         }
       },
     },
-    stdin: { read: readStdin },
+    stdin: { read: readStdin, readHidden: readHiddenStdin },
     stdout: { write: (text) => void process.stdout.write(text) },
     stderr: { write: (text) => void process.stderr.write(text) },
     clock: () => Date.now(),
@@ -54,4 +55,47 @@ async function readStdin(): Promise<string> {
   }
   text += decoder.decode();
   return text;
+}
+
+/**
+ * Reads one line with the terminal in raw mode so nothing is echoed. Falls
+ * back to plain reading when standard input is piped. Enter finishes the
+ * line, backspace edits it, and Ctrl-C restores the terminal and stops.
+ */
+function readHiddenStdin(): Promise<string> {
+  const stdin = process.stdin;
+  if (!stdin.isTTY || stdin.setRawMode === undefined) {
+    return readStdin();
+  }
+  const { promise, resolve } = Promise.withResolvers<string>();
+  const bytes: number[] = [];
+  const finish = (): void => {
+    stdin.removeListener('data', onData);
+    stdin.setRawMode?.(false);
+    stdin.pause();
+    process.stderr.write('\n');
+    resolve(new TextDecoder().decode(new Uint8Array(bytes)));
+  };
+  const onData = (chunk: Uint8Array): void => {
+    for (let i = 0; i < chunk.length; i += 1) {
+      const byte = chunk[i]!;
+      if (byte === 0x0d || byte === 0x0a) {
+        finish();
+        return;
+      }
+      if (byte === 0x03) {
+        process.stderr.write('\n');
+        process.exit(130);
+      }
+      if (byte === 0x7f || byte === 0x08) {
+        bytes.pop();
+        continue;
+      }
+      bytes.push(byte);
+    }
+  };
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.on('data', onData);
+  return promise;
 }
