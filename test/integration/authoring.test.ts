@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { convertMarkdownToDocument } from '../../src/conversion/markdown.js';
-import { BASE_URL, BIN, COOKIE, credentialsHint, hasCredentials } from './env.js';
+import { BASE_URL, BIN, COOKIE, credentialsHint, hasCredentials, integrationApi } from './env.js';
 
 /**
  * The manual integration suite for issue #7. It exercises the real Substack
@@ -26,26 +26,7 @@ interface JsonRecord {
   [key: string]: unknown;
 }
 
-async function api(method: string, path: string, body?: unknown): Promise<{ status: number; json: unknown }> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      cookie: `substack.sid=${COOKIE}`,
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  const text = await response.text();
-  let json: unknown = null;
-  if (text !== '') {
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = text;
-    }
-  }
-  return { status: response.status, json };
-}
+const api = integrationApi;
 
 /** Drafts created by the current test; deleted in finally blocks. */
 let createdDrafts: number[] = [];

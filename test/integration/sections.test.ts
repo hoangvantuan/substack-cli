@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BASE_URL, BIN, COOKIE } from './env.js';
+import { BASE_URL, BIN, COOKIE, integrationApi } from './env.js';
 
 /**
  * Real end-to-end coverage for issue #11: a temporary section is created,
@@ -24,26 +24,7 @@ function runCli(args: string[]): string {
   });
 }
 
-async function api(method: string, path: string, body?: unknown): Promise<{ status: number; json: unknown }> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      cookie: `substack.sid=${COOKIE}`,
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  const text = await response.text();
-  let json: unknown = null;
-  if (text !== '') {
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = text;
-    }
-  }
-  return { status: response.status, json };
-}
+const api = integrationApi;
 
 const createdDrafts: number[] = [];
 let createdSectionId: number | null = null;

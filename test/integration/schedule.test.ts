@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
-import { BASE_URL, BIN, COOKIE } from './env.js';
+import { BASE_URL, BIN, COOKIE, integrationApi } from './env.js';
 
 /**
  * Real end-to-end scheduling for issue #9: schedule a post into the far
@@ -24,22 +24,7 @@ function runCli(args: string[]): string {
   });
 }
 
-async function api(method: string, path: string): Promise<{ status: number; json: unknown }> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: { cookie: `substack.sid=${COOKIE}` },
-  });
-  const text = await response.text();
-  let json: unknown = null;
-  if (text !== '') {
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = text;
-    }
-  }
-  return { status: response.status, json };
-}
+const api = integrationApi;
 
 function wait(ms: number): Promise<void> {
   const { promise, resolve } = Promise.withResolvers<void>();

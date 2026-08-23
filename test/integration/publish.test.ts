@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BASE_URL, COOKIE } from './env.js';
+import { BASE_URL, COOKIE, integrationApi } from './env.js';
 
 /**
  * The manual integration suite for issue #10. It publishes real posts on the
@@ -27,26 +27,7 @@ const skipReason = hasCredentials ? false : 'set SUBSTACK_COOKIE and SUBSTACK_PU
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function api(method: string, path: string, body?: unknown): Promise<{ status: number; json: unknown }> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      cookie: `substack.sid=${COOKIE}`,
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  const text = await response.text();
-  let json: unknown = null;
-  if (text !== '') {
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = text;
-    }
-  }
-  return { status: response.status, json };
-}
+const api = integrationApi;
 
 function runCli(args: string[]): string {
   return execFileSync(process.execPath, [BIN.pathname, ...args], {
