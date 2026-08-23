@@ -1,4 +1,5 @@
 import type { Env } from './env/types.js';
+import { createCommand } from './authoring/create.js';
 import { scanCommand } from './reading/scan.js';
 
 export interface Subcommand {
@@ -25,5 +26,11 @@ export const groups: CommandGroup[] = [
     description: 'scan publications without authentication',
     usage: 'usage: substackctl feed <subcommand> [options]',
     subcommands: [scanCommand],
+  },
+  {
+    name: 'post',
+    description: 'author posts on your own publication',
+    usage: 'usage: substackctl post <subcommand> [options]',
+    subcommands: [createCommand],
   },
 ];
