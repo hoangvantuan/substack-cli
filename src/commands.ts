@@ -1,5 +1,6 @@
 import type { Env } from './env/types.js';
 import { scanCommand } from './reading/scan.js';
+import { profileGroup } from './profiles/profile.js';
 
 export interface Subcommand {
   name: string;
@@ -26,4 +27,5 @@ export const groups: CommandGroup[] = [
     usage: 'usage: substackctl feed <subcommand> [options]',
     subcommands: [scanCommand],
   },
+  profileGroup,
 ];

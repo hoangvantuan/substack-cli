@@ -25,9 +25,14 @@ export interface HttpClient {
   request(request: HttpRequest): Promise<HttpResponse>;
 }
 
+export interface WriteFileOptions {
+  /** POSIX permission bits applied when the file is created. */
+  mode?: number;
+}
+
 export interface FileSystem {
   readFile(path: string): Promise<string>;
-  writeFile(path: string, contents: string): Promise<void>;
+  writeFile(path: string, contents: string, options?: WriteFileOptions): Promise<void>;
   /** Creates the directory and any missing parents. */
   mkdir(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
@@ -36,6 +41,11 @@ export interface FileSystem {
 export interface StdinSource {
   /** Reads standard input to completion. */
   read(): Promise<string>;
+  /**
+   * Reads one secret without echoing what is typed. Falls back to plain
+   * reading when standard input is not a terminal.
+   */
+  readHidden(): Promise<string>;
 }
 
 export interface Env {
