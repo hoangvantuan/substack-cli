@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { convertMarkdownToDocument } from '../../src/conversion/markdown.js';
+import { BASE_URL, BIN, COOKIE, credentialsHint, hasCredentials } from './env.js';
 
 /**
  * The manual integration suite for issue #7. It exercises the real Substack
@@ -16,40 +17,8 @@ import { convertMarkdownToDocument } from '../../src/conversion/markdown.js';
  * SUBSTACK_COOKIE and SUBSTACK_PUBLICATION_URL, loaded from the repository's
  * .env when present. Without them every test skips with a hint.
  */
-const BIN = new URL('../../../dist/bin/substackctl.js', import.meta.url);
-function loadDotEnv(): Record<string, string> {
-  const candidates = [
-    // Inside the main checkout this is <repo>/.env; inside a linked
-    // worktree it walks up to the main repository.
-    '../../../../../.env',
-    '../../../.env',
-    '.env',
-  ];
-  const values: Record<string, string> = {};
-  for (const candidate of candidates) {
-    try {
-      const text = readFileSync(new URL(candidate, import.meta.url), 'utf8');
-      for (const line of text.split('\n')) {
-        const trimmed = line.trim();
-        if (trimmed === '' || trimmed.startsWith('#') || !trimmed.includes('=')) {
-          continue;
-        }
-        const [key, ...rest] = trimmed.split('=');
-        values[key!.trim()] = rest.join('=').trim();
-      }
-      break;
-    } catch {
-      // Try the next candidate.
-    }
-  }
-  return values;
-}
 
-const dotenv = loadDotEnv();
-export const BASE_URL = (process.env['SUBSTACK_PUBLICATION_URL'] ?? dotenv['SUBSTACK_PUBLICATION_URL'] ?? '').replace(/\/$/, '');
-export const COOKIE = process.env['SUBSTACK_COOKIE'] ?? dotenv['SUBSTACK_COOKIE'] ?? '';
-const hasCredentials = BASE_URL !== '' && COOKIE !== '';
-const skipReason = hasCredentials ? false : 'set SUBSTACK_COOKIE and SUBSTACK_PUBLICATION_URL (see .env) to run the integration suite';
+const skipReason = hasCredentials ? false : credentialsHint;
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -226,8 +195,13 @@ test('post list reports the created draft in the draft state', { skip: skipReaso
   }
 });
 
-test('the suite cleans up after itself', { skip: skipReason }, async () => {
+test('the integration drafts are cleaned up after themselves', { skip: skipReason }, async () => {
   const { json } = await api('GET', '/api/v1/drafts?limit=49&offset=0');
   const posts = (json as JsonRecord)['posts'] as JsonRecord[];
-  assert.deepEqual(posts, [], 'leftover drafts from earlier runs must be deleted');
+  // Published posts deliberately stay (they cannot be recalled), so only
+  // unpublished leftovers from the "Integration" suites count as debris.
+  const debris = posts.filter(
+    (post) => post['is_published'] !== true && String(post['draft_title'] ?? '').startsWith('Integration'),
+  );
+  assert.deepEqual(debris, [], 'leftover unpublished integration drafts must be deleted');
 });

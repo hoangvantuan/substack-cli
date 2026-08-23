@@ -2,6 +2,7 @@ import type { Env } from './env/types.js';
 import { crawlAllCommand, crawlCommand } from './reading/crawl.js';
 import { createCommand } from './authoring/create.js';
 import { listCommand } from './authoring/list.js';
+import { deleteCommand } from './authoring/delete.js';
 import { scanCommand } from './reading/scan.js';
 import { profileGroup } from './profiles/profile.js';
 
@@ -35,6 +36,6 @@ export const groups: CommandGroup[] = [
     name: 'post',
     description: 'author posts on your own publication',
     usage: 'usage: substackctl post <subcommand> [options]',
-    subcommands: [createCommand, listCommand],
+    subcommands: [createCommand, listCommand, deleteCommand],
   },
 ];

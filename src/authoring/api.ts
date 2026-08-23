@@ -211,6 +211,17 @@ export class SubstackClient {
     const detail = errorDetail(parsed);
     throw new Error(`${method} ${path} failed with HTTP ${response.status}${detail === '' ? '' : `: ${detail}`}`);
   }
+
+  /**
+   * Reads whether a post is published or scheduled straight from the API,
+   * so destructive commands never trust their arguments about state.
+   */
+  async draftState(id: number): Promise<{ published: boolean; scheduled: boolean }> {
+    const raw = asRecord(await this.request('GET', `/api/v1/drafts/${id}`), `GET /api/v1/drafts/${id}`);
+    const published = raw['is_published'] === true;
+    const dated = typeof raw['post_date'] === 'string' && raw['post_date'] !== '';
+    return { published, scheduled: !published && dated };
+  }
 }
 
 /** Maps a raw post object from either listing endpoint to the summary shape. */
