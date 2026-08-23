@@ -100,7 +100,7 @@ test('scheduling creates the draft and sets the release through the release endp
   assert.equal(released.trigger_at, new Date(2030, 0, 1, 9, 30).toISOString());
   assert.equal(released.post_audience, 'everyone');
   assert.equal(h.requests[4]!.method, 'GET');
-  assert.equal(h.stdout(), 'scheduled 11\nrelease at: 2030-01-01T02:30:00.000Z\n');
+  assert.equal(h.stdout(), `scheduled 11\nrelease at: ${new Date(2030, 0, 1, 9, 30).toISOString()}\n`);
 });
 
 test('--audience names the recipient group on both the draft and the release', async () => {
