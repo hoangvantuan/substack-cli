@@ -58,7 +58,10 @@ export const createCommand: Subcommand = {
     const cover = flag('cover') ?? post.fields['cover'];
     const audience = flag('audience') ?? post.fields['audience'] ?? 'everyone';
     if (!(audience in AUDIENCES)) {
-      throw new Error(`invalid audience "${audience}": expected everyone, only_paid, only_free, or founding`);
+      const complaint = `invalid audience "${audience}": expected everyone, only_paid, only_free, or founding`;
+      // A flag is a command-line mistake (exit 2); the same value in the file
+      // is a bad input file (exit 1).
+      throw flag('audience') === undefined ? new Error(complaint) : new UsageError(complaint);
     }
     const slug = flag('slug') ?? post.fields['slug'];
     if (slug !== undefined && !SLUG.test(slug)) {
@@ -93,6 +96,9 @@ export const createCommand: Subcommand = {
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
       const bylineUserId = await client.ownerUserId();
+      // The section is resolved before the draft exists: an unknown name used
+      // to create the draft first and fail afterwards, leaving it behind.
+      const sectionId = section === undefined ? undefined : await sectionIdFor(client, section);
       // Local body images are uploaded and rewritten to hosted URLs before
       // the draft is created, so a missing file stops the command instead of
       // producing a post with a broken image.
@@ -105,21 +111,33 @@ export const createCommand: Subcommand = {
         audience,
         ...(cover === undefined ? {} : { coverImage: cover }),
       });
-      const sectionId = section === undefined ? undefined : await sectionIdFor(client, section);
-      if (slug !== undefined || sectionId !== undefined) {
-        const patch: Record<string, unknown> = {};
-        if (slug !== undefined) {
-          patch['slug'] = slug;
+      let created;
+      try {
+        if (slug !== undefined || sectionId !== undefined) {
+          const patch: Record<string, unknown> = {};
+          if (slug !== undefined) {
+            patch['slug'] = slug;
+          }
+          if (sectionId !== undefined) {
+            patch['draft_section_id'] = sectionId;
+          }
+          await client.updateDraft(draft.id, patch);
+          if (sectionId !== undefined) {
+            await verifySectionAssignment(client, draft.id, sectionId, section!);
+          }
         }
-        if (sectionId !== undefined) {
-          patch['draft_section_id'] = sectionId;
+        created = await client.getDraft(draft.id);
+      } catch (error) {
+        // A half-made draft is invisible clutter -- a rejected slug used to
+        // leave one behind. The command either creates the post as asked or
+        // leaves nothing, the same rule `post schedule` follows.
+        try {
+          await client.deleteDraft(draft.id);
+        } catch {
+          env.stderr.write(`warning: could not remove the leftover draft ${draft.id}\n`);
         }
-        await client.updateDraft(draft.id, patch);
-        if (sectionId !== undefined) {
-          await verifySectionAssignment(client, draft.id, sectionId, section!);
-        }
+        throw error;
       }
-      const created = await client.getDraft(draft.id);
       env.stdout.write(`draft ${created.id}\n`);
       if (created.slug !== null) {
         env.stdout.write(`url: ${profile.publication}/p/${created.slug}\n`);

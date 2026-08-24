@@ -191,8 +191,8 @@ test('the command states its profile and publication before sending', async () =
 test('a section is assigned by a separate update, verified against draft_section_id', async () => {
   const h = sendEnv({ 'post.md': ['---', 'title: T', 'section: News', '---', 'Body.'].join('\n') }, [
     jsonResponse([{ id: 42, role: 'admin' }]),
-    jsonResponse({ id: 123, slug: null, draft_section_id: null }),
     jsonResponse([{ id: 7, name: 'News', slug: 'news' }, { id: 8, name: 'Other', slug: 'other' }]),
+    jsonResponse({ id: 123, slug: null, draft_section_id: null }),
     jsonResponse({ id: 123, slug: null, draft_section_id: 7, section_id: null }),
     jsonResponse({ id: 123, slug: null, draft_section_id: 7, section_id: null }),
     jsonResponse({ id: 123, slug: null, draft_section_id: 7, section_id: null }),
@@ -212,8 +212,8 @@ test('slug and section ride one update after creation', async () => {
     { 'post.md': ['---', 'title: T', 'section: News', 'slug: hello-world', '---', 'Body.'].join('\n') },
     [
       jsonResponse([{ id: 42, role: 'admin' }]),
-      jsonResponse({ id: 123, slug: null, draft_section_id: null }),
       jsonResponse([{ id: 7, name: 'News', slug: 'news' }]),
+      jsonResponse({ id: 123, slug: null, draft_section_id: null }),
       jsonResponse({ id: 123, slug: 'hello-world', draft_section_id: 7 }),
       jsonResponse({ id: 123, slug: 'hello-world', draft_section_id: 7 }),
       jsonResponse({ id: 123, slug: 'hello-world', draft_section_id: 7 }),
@@ -229,28 +229,47 @@ test('slug and section ride one update after creation', async () => {
   assert.match(h.stdout(), /draft 123\nurl: https:\/\/envpub\.substack\.com\/p\/hello-world\n/);
 });
 
-test('an unknown section fails naming what exists', async () => {
+test('an unknown section fails naming what exists, before any draft is created', async () => {
   const h = sendEnv({ 'post.md': ['---', 'title: T', 'section: News', '---', 'Body.'].join('\n') }, [
     jsonResponse([{ id: 42, role: 'admin' }]),
-    jsonResponse({ id: 123, slug: null, draft_section_id: null }),
     jsonResponse([]),
   ]);
   const code = await runCli(['post', 'create', 'post.md'], h.env);
   assert.equal(code, 1);
   assert.match(h.stderr(), /unknown section "News" \(the publication has no sections\)/);
+  // The lookup used to run after the create, which left the draft behind.
+  assert.ok(!h.requests.some((request) => request.url.endsWith('/api/v1/drafts')));
 });
 
-test('a section that does not stick fails verification against draft_section_id', async () => {
+test('a section that does not stick fails verification and removes the draft', async () => {
   const h = sendEnv({ 'post.md': ['---', 'title: T', 'section: News', '---', 'Body.'].join('\n') }, [
     jsonResponse([{ id: 42, role: 'admin' }]),
-    jsonResponse({ id: 123, slug: null, draft_section_id: null }),
     jsonResponse([{ id: 7, name: 'News', slug: 'news' }]),
     jsonResponse({ id: 123, slug: null, draft_section_id: null }),
     jsonResponse({ id: 123, slug: null, draft_section_id: null }),
+    jsonResponse({ id: 123, slug: null, draft_section_id: null }),
+    jsonResponse({}),
   ]);
   const code = await runCli(['post', 'create', 'post.md'], h.env);
   assert.equal(code, 1);
   assert.match(h.stderr(), /draft_section_id is empty/);
+  // A draft the command could not finish is removed rather than left behind.
+  const removal = h.requests.find((request) => request.method === 'DELETE');
+  assert.equal(removal?.url, 'https://envpub.substack.com/api/v1/drafts/123');
+});
+
+test('a rejected slug removes the draft the command had just created', async () => {
+  const h = sendEnv({ 'post.md': ['---', 'title: T', 'slug: taken-slug', '---', 'Body.'].join('\n') }, [
+    jsonResponse([{ id: 42, role: 'admin' }]),
+    jsonResponse({ id: 123, slug: null, draft_section_id: null }),
+    jsonResponse({ error: 'There is already another post with this slug' }, 400),
+    jsonResponse({}),
+  ]);
+  const code = await runCli(['post', 'create', 'post.md'], h.env);
+  assert.equal(code, 1);
+  assert.match(h.stderr(), /already another post with this slug/);
+  const removal = h.requests.find((request) => request.method === 'DELETE');
+  assert.equal(removal?.url, 'https://envpub.substack.com/api/v1/drafts/123');
 });
 
 test('a rejected cookie exits 3 and names the fix', async () => {
