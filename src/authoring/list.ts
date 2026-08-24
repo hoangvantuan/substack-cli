@@ -6,7 +6,6 @@ import { loadConfig } from '../profiles/config.js';
 import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import {
   AuthError,
-  DRAFTS_MAX_LIMIT,
   POST_MANAGEMENT_MAX_LIMIT,
   SubstackClient,
   type AuthoringPost,
@@ -92,31 +91,21 @@ export const listCommand: Subcommand = {
 };
 
 /**
- * Lists up to `limit` posts in `state`. The listing endpoints cap how much
- * one request may return, so larger limits are filled by paging; the state
- * filter for drafts runs client-side because /api/v1/drafts also returns
- * scheduled and published posts.
+ * Lists up to `limit` posts in `state`. The endpoint caps how much one
+ * request may return, so larger limits are filled by paging. All three
+ * states come from the post_management listing: it is the only one that
+ * honours `offset`, reports a `total`, and already filters by state, so no
+ * client-side filtering is needed.
  */
 async function listPosts(client: SubstackClient, state: PostState, limit: number): Promise<AuthoringPost[]> {
-  if (state === 'draft') {
-    const pageSize = Math.min(limit, DRAFTS_MAX_LIMIT);
-    const posts: AuthoringPost[] = [];
-    for (let offset = 0; posts.length < limit && offset < limit + DRAFTS_MAX_LIMIT; offset += pageSize) {
-      const page = await client.listDrafts(pageSize, offset);
-      const drafts = page.posts.filter((post) => !post.is_published && post.post_date === null);
-      posts.push(...drafts);
-      if (page.posts.length < pageSize) {
-        break;
-      }
-    }
-    return posts.slice(0, limit);
-  }
   const pageSize = Math.min(limit, POST_MANAGEMENT_MAX_LIMIT);
   const posts: AuthoringPost[] = [];
-  for (let offset = 0; posts.length < limit && offset < 200 * POST_MANAGEMENT_MAX_LIMIT; offset += pageSize) {
+  for (let offset = 0; posts.length < limit; offset += pageSize) {
     const page = await client.listPostManagement(state, pageSize, offset);
     posts.push(...page.posts);
-    if (posts.length >= page.total) {
+    // An empty page is the end even when `total` over-reports, so a listing
+    // that shrinks between requests cannot spin.
+    if (page.posts.length === 0 || posts.length >= page.total) {
       break;
     }
   }

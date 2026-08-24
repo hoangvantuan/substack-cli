@@ -151,27 +151,23 @@ export class SubstackClient {
     await this.request('DELETE', `/api/v1/drafts/${id}`);
   }
 
-  /** One page of the draft listing. `hasMore` can over-report; treat an empty page as the end. */
-  async listDrafts(limit: number, offset: number): Promise<{ posts: AuthoringPost[]; hasMore: boolean }> {
-    const raw = asRecord(
-      await this.request('GET', `/api/v1/drafts?limit=${limit}&offset=${offset}`),
-      'GET /api/v1/drafts',
-    );
-    const posts = asArray(raw['posts'], 'GET /api/v1/drafts posts');
-    return { posts: posts.map(summariseAuthoringPost), hasMore: raw['hasMore'] === true };
-  }
-
-  /** One page of the scheduled or published listing (total lets the caller stop without a extra request). */
+  /**
+   * One page of a listing, for any of the three states. This endpoint is the
+   * only listing that pages: `/api/v1/drafts` ignores `offset` outright and
+   * answers the same first page forever, so it is never a listing source.
+   * `total` lets the caller stop without an extra request.
+   */
   async listPostManagement(
-    state: 'scheduled' | 'published',
+    state: PostState,
     limit: number,
     offset: number,
   ): Promise<{ posts: AuthoringPost[]; total: number }> {
+    const segment = state === 'draft' ? 'drafts' : state;
     const path =
-      `/api/v1/post_management/${state}?offset=${offset}&limit=${limit}` +
+      `/api/v1/post_management/${segment}?offset=${offset}&limit=${limit}` +
       '&order_by=draft_updated_at&order_direction=desc';
-    const raw = asRecord(await this.request('GET', path), `GET /api/v1/post_management/${state}`);
-    const posts = asArray(raw['posts'], `GET /api/v1/post_management/${state} posts`);
+    const raw = asRecord(await this.request('GET', path), `GET /api/v1/post_management/${segment}`);
+    const posts = asArray(raw['posts'], `GET /api/v1/post_management/${segment} posts`);
     return { posts: posts.map(summariseAuthoringPost), total: typeof raw['total'] === 'number' ? raw['total'] : posts.length };
   }
 
@@ -209,6 +205,13 @@ export class SubstackClient {
       return parsed;
     }
     const detail = errorDetail(parsed);
+    // A 404 on a draft path means the identifier names nothing, which is worth
+    // saying plainly: the method and path tell the reader nothing they did not
+    // just type.
+    const draftId = /^\/api\/v1\/drafts\/(\d+)$/.exec(path);
+    if (response.status === 404 && draftId !== null) {
+      throw new Error(`post not found: ${draftId[1]}${detail === '' ? '' : ` (${detail})`}`);
+    }
     throw new Error(`${method} ${path} failed with HTTP ${response.status}${detail === '' ? '' : `: ${detail}`}`);
   }
 
@@ -396,6 +399,14 @@ function asArray(raw: unknown, label: string): Record<string, unknown>[] {
 function errorDetail(parsed: unknown): string {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     return '';
+  }
+  // Substack states its business failures as {"error": "...", "type": "single"}
+  // -- "Please choose a section.", "You already have a section with that name",
+  // "There is already another post with this slug". Those are the messages a
+  // caller can act on, so they are read before the field-validation shape.
+  const single = (parsed as Record<string, unknown>)['error'];
+  if (typeof single === 'string' && single !== '') {
+    return single;
   }
   const errors = (parsed as Record<string, unknown>)['errors'];
   if (!Array.isArray(errors)) {

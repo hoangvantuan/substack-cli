@@ -46,35 +46,53 @@ function draftEntry(overrides: Record<string, unknown> = {}): Record<string, unk
   };
 }
 
-test('post list defaults to drafts from /api/v1/drafts and prints a table', async () => {
-  const h = listEnv([jsonResponse({ posts: [draftEntry()], hasMore: false, nextCursor: null })]);
+test('post list defaults to drafts from post_management and prints a table', async () => {
+  const h = listEnv([jsonResponse({ posts: [draftEntry()], total: 1 })]);
   const code = await runCli(['post', 'list'], h.env);
   assert.equal(code, 0);
   assert.equal(h.requests.length, 1);
-  assert.equal(h.requests[0]!.url, 'https://envpub.substack.com/api/v1/drafts?limit=10&offset=0');
+  // /api/v1/drafts ignores `offset` and cannot be paged, so the draft state
+  // reads the same listing the other two states do.
+  assert.equal(
+    h.requests[0]!.url,
+    'https://envpub.substack.com/api/v1/post_management/drafts?offset=0&limit=10&order_by=draft_updated_at&order_direction=desc',
+  );
   assert.equal(h.requests[0]!.headers?.['cookie'], 'substack.sid=env-cookie');
   const lines = h.stdout().split('\n');
   assert.match(lines[0]!, /^POST_DATE {2}AUDIENCE {2}TITLE/);
   assert.match(lines[1]!, /^- {10}everyone {2}First draft {2}11$/);
 });
 
-test('published and scheduled posts are filtered out of the draft state client-side', async () => {
+test('the draft listing is taken as the endpoint states it, without client-side filtering', async () => {
+  // post_management/drafts answers drafts only, so every row it names is one.
   const h = listEnv([
     jsonResponse({
-      posts: [
-        draftEntry({ id: 11, draft_title: 'Pure draft' }),
-        draftEntry({ id: 12, draft_title: 'Scheduled', post_date: '2027-01-01T00:00:00Z' }),
-        draftEntry({ id: 13, draft_title: 'Published', is_published: true }),
-      ],
-      hasMore: false,
+      posts: [draftEntry({ id: 11, draft_title: 'Pure draft' }), draftEntry({ id: 12, draft_title: 'Another draft' })],
+      total: 2,
     }),
   ]);
   const code = await runCli(['post', 'list', '--state', 'draft'], h.env);
   assert.equal(code, 0);
   const titles = h.stdout().split('\n').slice(1).join('\n');
   assert.match(titles, /Pure draft/);
-  assert.doesNotMatch(titles, /Scheduled/);
-  assert.doesNotMatch(titles, /Published/);
+  assert.match(titles, /Another draft/);
+  assert.equal(h.requests.length, 1);
+});
+
+test('a draft listing shorter than the limit stops instead of re-reading the first page', async () => {
+  // The regression this guards: paging /api/v1/drafts returned the same page
+  // for every offset, so `--limit 20` printed three drafts four times over.
+  const h = listEnv([
+    jsonResponse({
+      posts: [draftEntry({ id: 11 }), draftEntry({ id: 12 }), draftEntry({ id: 13 })],
+      total: 3,
+    }),
+  ]);
+  const code = await runCli(['post', 'list', '--state', 'draft', '--limit', '20'], h.env);
+  assert.equal(code, 0);
+  assert.equal(h.requests.length, 1);
+  const ids = h.stdout().split('\n').slice(1).filter((line) => line !== '').map((line) => line.trim().split(/ +/).pop());
+  assert.deepEqual(ids, ['11', '12', '13']);
 });
 
 test('post list --state scheduled uses post_management with its required ordering', async () => {
@@ -112,28 +130,27 @@ test('post list --state published and --json together', async () => {
   assert.equal(posts[0].url, 'https://envpub.substack.com/p/live');
 });
 
-test('a limit above the drafts endpoint maximum pages instead of failing', async () => {
+test('a draft limit above the endpoint maximum pages by total', async () => {
   let calls = 0;
   const h = listEnv([]);
   h.env.http = {
     request: async (request) => {
       h.requests.push(request);
       calls += 1;
-      // Three full pages of 49, then a short page: 172 posts in total.
-      const count = calls <= 3 ? 49 : 25;
+      // Three full pages of 50, then a short page: 170 drafts in total.
+      const count = calls <= 3 ? 50 : 20;
       const posts = Array.from({ length: count }, (_, i) => draftEntry({ id: 1000 + calls * 100 + i }));
-      return jsonResponse({ posts, hasMore: calls <= 3 });
+      return jsonResponse({ posts, total: 170 });
     },
   };
   const code = await runCli(['post', 'list', '--limit', '150'], h.env);
   assert.equal(code, 0);
   assert.deepEqual(
-    h.requests.map((request) => request.url),
+    h.requests.map((request) => new URL(request.url).search),
     [
-      'https://envpub.substack.com/api/v1/drafts?limit=49&offset=0',
-      'https://envpub.substack.com/api/v1/drafts?limit=49&offset=49',
-      'https://envpub.substack.com/api/v1/drafts?limit=49&offset=98',
-      'https://envpub.substack.com/api/v1/drafts?limit=49&offset=147',
+      '?offset=0&limit=50&order_by=draft_updated_at&order_direction=desc',
+      '?offset=50&limit=50&order_by=draft_updated_at&order_direction=desc',
+      '?offset=100&limit=50&order_by=draft_updated_at&order_direction=desc',
     ],
   );
   const rows = h.stdout().split('\n').filter((line) => line.includes('First draft'));
