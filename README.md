@@ -158,12 +158,15 @@ npm run test:integration   # real-API suite; needs SUBSTACK_COOKIE +
 ```
 ## Releasing
 
-0.1.0 was published manually from a maintainer machine. Later releases go
-through CI: create a granular access token on npmjs.com (packages: read and
-write, limited to `substackctl`), add it as the `NPM_TOKEN` repository secret
-(Settings > Secrets and variables > Actions), then
-`git tag vX.Y.Z && git push origin vX.Y.Z`. The Release workflow publishes
-with provenance attestation; every release is just another tag push.
+0.1.0 was bootstrapped with a manual, 2FA-protected `npm publish`. Later
+releases go through CI with trusted publishing (OIDC): in the package's
+npmjs.com Settings, Trusted publishing points at GitHub Actions for
+`hoangvantuan/substack-cli` with workflow filename `release.yml`. After that
+one-time setup, every release is just `git tag vX.Y.Z &&
+git push origin vX.Y.Z`; the workflow publishes with a short-lived OIDC
+credential and a provenance attestation, no npm token secret involved.
+Once it works, set Publishing access to "Require two-factor authentication
+and disallow tokens".
 
 ## Documentation
 

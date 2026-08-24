@@ -1,19 +1,10 @@
-# Publishes substackctl to npm with provenance attestation when a version tag
-# is pushed.
+# Publishes substackctl to npm via trusted publishing (OIDC) when a version
+# tag is pushed. Provenance attestations are generated automatically.
 #
-# STATUS: written but NEVER RUN. Publishing was deliberately deferred by the
-# user: no NPM_TOKEN secret has been configured in this repository yet, and no
-# v* tag has been pushed. When ready to release for real:
-#
-#   1. Create an npm account and verify its email address.
-#   2. Confirm the intended login: npm whoami.
-#   3. Create an automation/granular access token on npmjs.com and add it as
-#      the NPM_TOKEN secret in GitHub (Settings > Secrets and variables >
-#      Actions).
-#   4. Tag and push: git tag v0.1.0 && git push origin v0.1.0
-#
-# This workflow then claims the package name with a placeholder release; every
-# later release is just another tag push.
+# One-time setup on npmjs.com (needs the package to exist, so it bootstrapped
+# with a manual publish first): package Settings > Trusted publishing >
+# GitHub Actions with repository hoangvantuan/substack-cli, workflow filename
+# release.yml, allow "npm publish". No npm token secret is involved.
 
 name: Release
 
@@ -33,10 +24,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: npm
+          package-manager-cache: false # never use caching in release builds
           registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
       - run: npm ci
-      - run: npm run build
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm test
+      - run: npm publish --access public
