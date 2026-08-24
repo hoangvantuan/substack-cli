@@ -1,6 +1,6 @@
 {
   "name": "substackctl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Command-line tool that manages posts on Substack and reads other people's newsletters",
   "license": "MIT",
   "repository": {
