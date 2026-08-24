@@ -100,17 +100,26 @@ async function dispatch(argv: string[], env: Env): Promise<number> {
   }
 }
 
+/** The top-level command list shared by `substackctl help` and every usage error. */
+function topCommandLines(): string[] {
+  const width = Math.max(...groups.map((group) => group.name.length), 'update'.length);
+  return [
+    ...groups.map((group) => `  ${group.name.padEnd(width)}  ${group.description}`),
+    `  ${'update'.padEnd(width)}  self-update to the latest npm release`,
+  ];
+}
+
 function printTopUsage(env: Env): void {
-  const lines = ['usage: substackctl <command> [options]', '', 'commands:'];
-  for (const group of groups) {
-    lines.push(`  ${group.name.padEnd(8)}${group.description}`);
-  }
-  env.stderr.write(lines.join('\n') + '\n');
+  env.stderr.write(['usage: substackctl <command> [options]', '', 'commands:', ...topCommandLines()].join('\n') + '\n');
 }
 
 /** Handles `substackctl help` and `substackctl help <command>`. */
 function helpTopic(topics: string[], env: Env): number {
   const [topic, ...extra] = topics;
+  if (topic === 'update') {
+    env.stdout.write('usage: substackctl update\n\nself-update to the latest npm release\n');
+    return EXIT_SUCCESS;
+  }
   if (extra.length > 0) {
     env.stderr.write(`unexpected argument: ${extra[0]}\n`);
     return EXIT_USAGE;
@@ -130,13 +139,16 @@ function helpTopic(topics: string[], env: Env): number {
 }
 
 function printTopHelp(env: Env): void {
-  const width = Math.max(...groups.map((group) => group.name.length), 'update'.length);
-  const lines = ['usage: substackctl <command> [options]', '', 'commands:'];
-  for (const group of groups) {
-    lines.push(`  ${group.name.padEnd(width)}  ${group.description}`);
-  }
-  lines.push(`  ${'update'.padEnd(width)}  self-update to the latest npm release`);
-  lines.push('', 'options:', '  --help     show this help', '  --version  print the version');
+  const lines = [
+    'usage: substackctl <command> [options]',
+    '',
+    'commands:',
+    ...topCommandLines(),
+    '',
+    'options:',
+    '  --help     show this help',
+    '  --version  print the version',
+  ];
   env.stdout.write(lines.join('\n') + '\n');
 }
 

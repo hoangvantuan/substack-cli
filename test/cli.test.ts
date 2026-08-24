@@ -20,6 +20,21 @@ test('unknown command prints usage on stderr and exits 2', async () => {
   assert.match(h.stderr(), /usage: substackctl/);
 });
 
+test('the usage error lists every command, update included', async () => {
+  const h = makeEnv();
+  const code = await runCli(['bogus'], h.env);
+  assert.equal(code, 2);
+  assert.match(h.stderr(), /update\s+self-update to the latest npm release/);
+});
+
+test('help update prints the update usage on stdout', async () => {
+  const h = makeEnv();
+  const code = await runCli(['help', 'update'], h.env);
+  assert.equal(code, 0);
+  assert.match(h.stdout(), /usage: substackctl update/);
+  assert.equal(h.stderr(), '');
+});
+
 test('feed without a subcommand exits 2', async () => {
   const h = makeEnv();
   const code = await runCli(['feed'], h.env);
