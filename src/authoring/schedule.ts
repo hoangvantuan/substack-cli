@@ -8,6 +8,7 @@ import { EXIT_AUTH, EXIT_SUCCESS, UsageError } from '../exit.js';
 import { loadConfig } from '../profiles/config.js';
 import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import { AuthError, SubstackClient } from './api.js';
+import { dirnameOf, uploadLocalImages } from './images.js';
 
 export const scheduleUsage =
   'usage: substackctl post schedule <file> <time> [--audience <a>] [--profile <name>]\n' +
@@ -15,6 +16,21 @@ export const scheduleUsage =
   '       machine-local time; 2026-12-24T09:30+07:00 or ...Z is used as given';
 
 const AUDIENCES: Record<string, true> = { everyone: true, only_paid: true, only_free: true, founding: true };
+
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** Resolves a section by name; the API knows sections by id, not name. */
+async function sectionIdFor(client: SubstackClient, section: string): Promise<number> {
+  const sections = await client.listSections();
+  const match = sections.find((candidate) => candidate.name === section);
+  if (match === undefined) {
+    const known = sections.map((candidate) => `"${candidate.name}"`).join(', ');
+    throw new UsageError(
+      `unknown section "${section}"${known === '' ? ' (the publication has no sections)' : `; known sections: ${known}`}`,
+    );
+  }
+  return match.id;
+}
 
 /**
  * Reads a release time in one of the accepted ISO 8601 shapes. A time
@@ -71,10 +87,6 @@ export const scheduleCommand: Subcommand = {
       const value = parsed.values.get(name);
       return typeof value === 'string' ? value : undefined;
     };
-    const audience = flag('audience') ?? 'everyone';
-    if (!(audience in AUDIENCES)) {
-      throw new Error(`invalid audience "${audience}": expected everyone, only_paid, only_free, or founding`);
-    }
     const when = parseReleaseTime(timeInput);
     if (when.getTime() <= env.clock()) {
       throw new Error(
@@ -97,6 +109,22 @@ export const scheduleCommand: Subcommand = {
       throw new Error('missing title: set "title" in the front matter');
     }
     const subtitle = post.fields['subtitle'] ?? '';
+    // The same front matter `post create` honours, honoured here too: a field
+    // that only works in one of the two commands is a trap.
+    const audience = flag('audience') ?? post.fields['audience'] ?? 'everyone';
+    if (!(audience in AUDIENCES)) {
+      const complaint = `invalid audience "${audience}": expected everyone, only_paid, only_free, or founding`;
+      throw flag('audience') === undefined ? new Error(complaint) : new UsageError(complaint);
+    }
+    const section = post.fields['section'];
+    const cover = post.fields['cover'];
+    if (cover !== undefined && !/^https?:\/\//i.test(cover)) {
+      throw new Error(`invalid cover "${cover}": must be an http(s) URL`);
+    }
+    const slug = post.fields['slug'];
+    if (slug !== undefined && !SLUG.test(slug)) {
+      throw new Error(`invalid slug "${slug}": use lowercase words separated by single hyphens`);
+    }
     const { document, warnings } = convertMarkdownToDocument(post.body);
     for (const warning of warnings) {
       env.stderr.write(`warning: ${warning}\n`);
@@ -114,17 +142,40 @@ export const scheduleCommand: Subcommand = {
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
       const bylineUserId = await client.ownerUserId();
+      // Resolved before the draft exists so an unknown name never leaves one
+      // behind, the same order `post create` uses.
+      const sectionId = section === undefined ? undefined : await sectionIdFor(client, section);
+      // Same rule as `post create`: local body images become hosted URLs
+      // before the draft exists, so a scheduled post never holds a path
+      // that only resolves on this machine.
+      await uploadLocalImages(env, client, document, dirnameOf(file));
       const draft = await client.createDraft({
         title,
         subtitle,
         body: JSON.stringify(document),
         bylineUserId,
         audience,
+        ...(cover === undefined ? {} : { coverImage: cover }),
       });
-      // The release endpoint refuses drafts that never went through a
-      // publish-settings save; this one-field update is that save.
-      await client.updateDraft(draft.id, { section_chosen: true });
       try {
+        // The release endpoint refuses drafts that never went through a
+        // publish-settings save; this update is that save, and the slug and
+        // section from the front matter ride along in the same request.
+        await client.updateDraft(draft.id, {
+          section_chosen: true,
+          ...(slug === undefined ? {} : { slug }),
+          ...(sectionId === undefined ? {} : { draft_section_id: sectionId }),
+        });
+        if (sectionId !== undefined) {
+          const fields = await client.draftFields(draft.id);
+          if (fields.draft_section_id !== sectionId) {
+            throw new Error(
+              `the section assignment could not be verified: draft_section_id is ` +
+                `${fields.draft_section_id === null ? 'empty' : fields.draft_section_id}, ` +
+                `expected ${sectionId} for "${section!}"`,
+            );
+          }
+        }
         await client.scheduleRelease(draft.id, when.toISOString(), audience);
         const active = await client.getScheduledRelease(draft.id);
         if (active.length === 0) {
@@ -142,8 +193,11 @@ export const scheduleCommand: Subcommand = {
       }
       env.stdout.write(`scheduled ${draft.id}\n`);
       env.stdout.write(`release at: ${when.toISOString()}\n`);
-      if (draft.slug !== null) {
-        env.stdout.write(`url: ${profile.publication}/p/${draft.slug}\n`);
+      // Re-read rather than trusting the create response: a slug from the
+      // front matter is only applied afterwards.
+      const scheduled = await client.getDraft(draft.id);
+      if (scheduled.slug !== null) {
+        env.stdout.write(`url: ${profile.publication}/p/${scheduled.slug}\n`);
       }
       return EXIT_SUCCESS;
     } catch (error) {

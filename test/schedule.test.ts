@@ -81,11 +81,13 @@ test('scheduling creates the draft and sets the release through the release endp
     jsonResponse(draft),
     jsonResponse(draft),
     jsonResponse(activeSchedule),
+    jsonResponse(draft),
   ]);
   const code = await runCli(['post', 'schedule', 'post.md', '2030-01-01T09:30'], h.env);
   assert.equal(code, 0);
-  // users, create draft, publish-settings save, release, read-back check
-  assert.equal(h.requests.length, 5);
+  // users, create draft, publish-settings save, release, read-back check,
+  // and the final re-read that reports the URL
+  assert.equal(h.requests.length, 6);
   assert.equal(h.requests[1]!.method, 'POST');
   assert.equal(h.requests[1]!.url, 'https://envpub.substack.com/api/v1/drafts');
   const created = JSON.parse(h.requests[1]!.body!);
@@ -110,6 +112,7 @@ test('--audience names the recipient group on both the draft and the release', a
     jsonResponse(draft),
     jsonResponse(draft),
     jsonResponse([{ trigger_at: '2030-01-01T02:30:00.000Z', post_audience: 'only_paid' }]),
+    jsonResponse(draft),
   ]);
   const code = await runCli(['post', 'schedule', 'post.md', '2030-01-01T09:30+07:00', '--audience', 'only_paid'], h.env);
   assert.equal(code, 0);
@@ -128,12 +131,122 @@ test('a past release time is refused before anything is sent', async () => {
   assert.equal(h.requests.length, 0);
 });
 
-test('an invalid audience is refused without any request', async () => {
+test('an invalid --audience is a usage error refused without any request', async () => {
   const h = scheduleEnv([]);
   const code = await runCli(['post', 'schedule', 'post.md', '2030-01-01T09:30', '--audience', 'nobody'], h.env);
-  assert.equal(code, 1);
+  assert.equal(code, 2);
   assert.match(h.stderr(), /invalid audience "nobody"/);
   assert.equal(h.requests.length, 0);
+});
+
+test('the front matter audience drives the release when no flag names one', async () => {
+  // The regression this guards: `post schedule` used to default to everyone
+  // and drop `audience: only_paid` from the file without a word, which puts
+  // paid-only writing in front of every reader.
+  const h = envWithFiles({
+    'paid.md': ['---', 'title: Paid probe', 'audience: only_paid', '---', '', 'Body text.'].join('\n'),
+  });
+  let index = 0;
+  const responses = [
+    jsonResponse(users),
+    jsonResponse(draft),
+    jsonResponse(draft),
+    jsonResponse(draft),
+    jsonResponse([{ trigger_at: '2030-01-01T02:30:00.000Z', post_audience: 'only_paid' }]),
+    jsonResponse(draft),
+  ];
+  h.env.http = {
+    request: async (request) => {
+      h.requests.push(request);
+      const response = responses[index] ?? jsonResponse({}, 500);
+      index += 1;
+      return response;
+    },
+  };
+  h.env.vars = {
+    SUBSTACK_PUBLICATION_URL: 'https://envpub.substack.com',
+    SUBSTACK_COOKIE: 'env-cookie',
+  };
+  const code = await runCli(['post', 'schedule', 'paid.md', '2030-01-01T09:30'], h.env);
+  assert.equal(code, 0);
+  assert.equal(JSON.parse(h.requests[1]!.body!).audience, 'only_paid');
+  assert.equal(JSON.parse(h.requests[3]!.body!).post_audience, 'only_paid');
+});
+
+test('the front matter cover, slug, and section are applied instead of dropped', async () => {
+  const h = envWithFiles({
+    'full.md': [
+      '---',
+      'title: Full probe',
+      'cover: https://example.com/c.png',
+      'slug: full-probe',
+      'section: News',
+      '---',
+      '',
+      'Body text.',
+    ].join('\n'),
+  });
+  let index = 0;
+  const filed = { ...draft, slug: 'full-probe', draft_section_id: 7 };
+  const responses = [
+    jsonResponse(users),                                   // owner byline
+    jsonResponse([{ id: 7, name: 'News', slug: 'news' }]), // section lookup
+    jsonResponse({ ...draft, slug: 'full-probe' }),         // create
+    jsonResponse(filed),                                   // publish-settings save
+    jsonResponse(filed),                                   // section verification
+    jsonResponse(filed),                                   // release
+    jsonResponse(activeSchedule),                          // release read-back
+    jsonResponse(filed),                                   // re-read for the URL
+  ];
+  h.env.http = {
+    request: async (request) => {
+      h.requests.push(request);
+      const response = responses[index] ?? jsonResponse({}, 500);
+      index += 1;
+      return response;
+    },
+  };
+  h.env.vars = {
+    SUBSTACK_PUBLICATION_URL: 'https://envpub.substack.com',
+    SUBSTACK_COOKIE: 'env-cookie',
+  };
+  const code = await runCli(['post', 'schedule', 'full.md', '2030-01-01T09:30'], h.env);
+  assert.equal(code, 0, h.stderr());
+  // The section is looked up before the draft exists, so an unknown name
+  // never leaves one behind.
+  assert.equal(h.requests[1]!.url, 'https://envpub.substack.com/api/v1/publication/sections');
+  assert.equal(JSON.parse(h.requests[2]!.body!).cover_image, 'https://example.com/c.png');
+  // Slug and section ride the publish-settings save; no extra request.
+  assert.deepEqual(JSON.parse(h.requests[3]!.body!), {
+    section_chosen: true,
+    slug: 'full-probe',
+    draft_section_id: 7,
+  });
+  assert.match(h.stdout(), /url: https:\/\/envpub\.substack\.com\/p\/full-probe/);
+});
+
+test('an unknown section stops scheduling before a draft is created', async () => {
+  const h = envWithFiles({
+    'sec.md': ['---', 'title: Probe', 'section: Missing', '---', '', 'Body text.'].join('\n'),
+  });
+  let index = 0;
+  const responses = [jsonResponse(users), jsonResponse([{ id: 7, name: 'News', slug: 'news' }])];
+  h.env.http = {
+    request: async (request) => {
+      h.requests.push(request);
+      const response = responses[index] ?? jsonResponse({}, 500);
+      index += 1;
+      return response;
+    },
+  };
+  h.env.vars = {
+    SUBSTACK_PUBLICATION_URL: 'https://envpub.substack.com',
+    SUBSTACK_COOKIE: 'env-cookie',
+  };
+  const code = await runCli(['post', 'schedule', 'sec.md', '2030-01-01T09:30'], h.env);
+  assert.equal(code, 2);
+  assert.match(h.stderr(), /unknown section "Missing"/);
+  assert.ok(!h.requests.some((request) => request.method === 'POST'));
 });
 
 test('missing <time> is a usage error exiting 2', async () => {
