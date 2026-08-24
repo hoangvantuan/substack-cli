@@ -32,7 +32,8 @@ the command prints and confirm the difference with the human.
 - Inspect profiles: `profile list`, `profile check <name>`.
 - Create drafts: `post create <file>` (add `--dry-run` first to preview the
   exact request). Drafts are private and reversible.
-- Adjust drafts: `post update`, `section set`, `post unschedule`.
+- Adjust drafts: `post update`, `section set`, `post unschedule`. Read the
+  publication's sections with `section list`.
 - Delete drafts and scheduled posts: `post delete <id> --yes`.
 
 ## What needs human confirmation first
@@ -42,6 +43,10 @@ the command prints and confirm the difference with the human.
   `--yes`; treat those as a second lock, not permission to skip asking.
 - **Deleting a published post** (`post delete <id> --yes --force-published`)
   removes it for every subscriber. Always ask.
+- **Changing the publication's sections** (`section add`, `section remove`)
+  edits the publication's own structure, not one post. `section remove` also
+  strips the grouping from every post filed under it and cannot be undone;
+  ask before either.
 - **Scheduling** (`post schedule`) sends email at the trigger time. Confirm
   the time and audience with the human before running it.
 
@@ -80,6 +85,8 @@ substackctl post unschedule <id>
 substackctl post publish <file|--id id> --profile p --yes [--no-send] [--audience a]
 substackctl post delete <id> --yes [--force-published]
 substackctl section list [--json]
+substackctl section add <name> <description>
+substackctl section remove <name-or-id> --yes
 substackctl section set <section-name> <id...>
 ```
 
@@ -87,6 +94,18 @@ A post file is Markdown with YAML-ish front matter carrying all metadata —
 `title` (required), plus `subtitle`, `section`, `cover`, `audience`
 (`everyone|only_paid|only_free|founding`), and `slug`. The body is Markdown;
 unsupported constructs fail loudly instead of being dropped.
+
+`post create` and `post schedule` apply every one of those fields.
+`post publish` applies `title`, `subtitle`, and `audience` only, and warns
+about the three it drops (`slug`, `section`, `cover`): prepare those with
+`post create` and publish the draft with `--id`.
+
+`cover` is the header image and only ever a hosted http(s) URL; it never
+appears in the body. Body images written as local paths (relative to the
+Markdown file) are uploaded by every sending command and rewritten to hosted
+URLs, so keep the image files next to the post. A missing file stops the
+command instead of producing a post with a broken image, and `--dry-run`
+reports what would be uploaded without uploading it.
 
 Crawled files use extra front matter keys (`author`, `date`, `source_url`,
 `publication`) that `post create` warns about and ignores, so a crawled piece

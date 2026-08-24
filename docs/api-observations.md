@@ -38,7 +38,7 @@ Last verified: 2026-08, CLI 0.1.0.
 
 | Method | Path | Payload | Notes |
 |---|---|---|---|
-| GET | `/api/v1/drafts?limit=&offset=` | — | `{posts, hasMore, nextCursor}`; `nextCursor` equals the next offset. `limit` max 49. Returns drafts **and** published/scheduled posts; filter client-side via `is_published` / `post_date`. Listing entries expose `draft_section_name` but may lag behind the detail endpoint after assignment. |
+| GET | `/api/v1/drafts?limit=&offset=` | — | `{posts, hasMore, nextCursor}`. **`offset` is ignored**: every value answers the same first page, oldest first, and `nextCursor` merely echoes `limit` while `hasMore` is always `true`, so the endpoint cannot be paged. `limit` max 49. Returns drafts **and** published/scheduled posts; filter client-side via `is_published` / `post_date`. It does **not** carry `draft_section_name` (only the post-management listings do). Use `/api/v1/post_management/drafts` for anything that needs paging or a total. |
 | POST | `/api/v1/drafts` | `{draft_title, draft_subtitle, draft_body (stringified ProseMirror doc), draft_bylines:[{id, is_guest:false}], type:"newsletter", audience, cover_image?}` | `draft_bylines[0].id` must be a real user id (see below); `null` is rejected with 400. |
 | GET | `/api/v1/drafts/{id}` | — | Detail object. `draft_section_id` is populated here; `section_id`/`section_name`/`section_slug` always read null. |
 | PUT | `/api/v1/drafts/{id}` | Partial patch: `{slug?, draft_subtitle?, draft_section_id?, section_chosen?: boolean}` | Several fields ride one request. `slug` must be unique across the publication ("There is already another post with this slug"). |
@@ -54,14 +54,22 @@ Last verified: 2026-08, CLI 0.1.0.
 
 - `GET /api/v1/publication/sections` — sections as the owner sees them.
 - `POST /api/v1/publication/sections` `{name, description}` — both fields are
-  required (missing `description` answers 400). Returns `{section:{...}}`.
+  required and `description` must be non-empty: a missing one answers 400
+  `{"errors":[{"param":"description","msg":"Invalid value"}]}` and `""` answers
+  the same. A name already in use answers 400
+  `{"error":"You already have a section with that name"}`. Returns
+  `{section:{...}}`.
 - `DELETE /api/v1/publication/sections/{id}` — returns `200` with body `"1"`.
+  Posts filed under the section survive; they lose the grouping.
 
-Scheduling requires the draft to have been saved once with
+Scheduling **and publishing** require the draft to have been saved once with
 `{section_chosen: true}` (a boolean; sending the section id in that field
-answers 400) or the release endpoint answers 400
+answers 400) or the endpoint answers 400
 `{"error":"Please choose a section."}`. The assigned `draft_section_id`
-itself does not satisfy the check.
+itself does not satisfy the check, and `GET .../prepublish` does not warn
+about it: it answers `{"errors":[],"suggestions":[]}` for a draft the publish
+endpoint is about to refuse. The check only bites once the publication has at
+least one section, so a publication with none hides the whole trap.
 
 ### Field trap
 
@@ -74,7 +82,7 @@ when a section is assigned. The populated fields are `draft_section_id`
 | Method | Path | Payload | Notes |
 |---|---|---|---|
 | GET | `/api/v1/drafts/{id}/scheduled_release` | — | `[]` when clear; otherwise `[{trigger_at, post_audience, email_audience}]`. |
-| POST | `/api/v1/drafts/{id}/scheduled_release` | `{trigger_at, post_audience}` | The dedicated release endpoint. Accepts UTC-Z and offset timestamps, normalises to UTC. Never publishes by itself. Requires `section_chosen` saved first (above). Substack rejects trigger times further than ~3 months out. |
+| POST | `/api/v1/drafts/{id}/scheduled_release` | `{trigger_at, post_audience}` | The dedicated release endpoint. Accepts UTC-Z and offset timestamps, normalises to UTC. Never publishes by itself. Requires `section_chosen` saved first (above). A trigger time far beyond three months was accepted in a later check (2026-08 → 2027-06), so treat any distance limit as unverified. |
 | DELETE | `/api/v1/drafts/{id}/scheduled_release` | — | Removes the pending release; the post returns to draft state. |
 | GET | `/api/v1/post_management/{drafts\|scheduled\|published}?offset=&limit=&order_by=draft_updated_at&order_direction=desc` | — | Requires both ordering params (400 without them). `limit` max 50. Response: `{isCapped, limit, offset, posts, total}`. |
 | GET | `/api/v1/drafts/{id}/prepublish` | — | `{errors[], suggestions[]}`. Flaky in practice; treat failures as advisory. |

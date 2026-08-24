@@ -71,6 +71,8 @@ substackctl post schedule <file> <time> [--audience a]
 substackctl post unschedule <id>
 substackctl post delete <id> --yes [--force-published]
 substackctl section list [--json]
+substackctl section add <name> <description>
+substackctl section remove <name-or-id> --yes
 substackctl section set <section-name> <id...>
 ```
 
@@ -98,6 +100,20 @@ slug: my-post-slug          # lowercase words separated by hyphens
 Body in Markdown. Local images referenced from the body are uploaded
 automatically when the post is sent.
 ```
+
+Local image paths resolve against the directory of the Markdown file. Every
+command that sends a post (`post create`, `post schedule`, `post publish`)
+uploads them and rewrites the references to the hosted URLs before the draft
+exists; a missing file stops the command naming it, so no post is ever
+created with a broken image. Images already referenced by an http(s) URL are
+left untouched, and `--dry-run` uploads nothing.
+
+`post create` and `post schedule` honour every field above. `post publish`
+honours `title`, `subtitle`, and `audience`, and warns that it is dropping
+`slug`, `section`, and `cover`: prepare those with `post create`, then publish
+the draft with `--id`. A command that cannot finish what the file asks for
+removes the draft it had just created rather than leaving a half-made post
+behind.
 
 Headings shift down one level on import (`#` becomes an H2); a sixth-level
 heading is rejected rather than flattened, as are tables and other constructs
