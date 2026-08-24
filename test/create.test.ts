@@ -302,7 +302,7 @@ test('a stale stored cookie warns before sending', async () => {
   delete h.env.vars['SUBSTACK_COOKIE'];
   h.env.fs = {
     readFile: (path: string) =>
-      path === '/home/tester/.config/substackctl/config.json'
+      path === '/home/tester/.config/sub-cli/config.json'
         ? Promise.resolve(JSON.stringify(config))
         : Promise.resolve(GOOD_POST),
     writeFile: () => Promise.reject(new Error('not used')),

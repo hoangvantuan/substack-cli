@@ -14,7 +14,7 @@ export function npmManagedInstall(moduleUrl: string = import.meta.url): boolean 
 }
 
 /**
- * Handles `substackctl update`: reports the newest release and installs it
+ * Handles `sub-cli update`: reports the newest release and installs it
  * over npm when this copy is an npm install. `moduleUrl` is injectable so
  * tests can stand in for the different install layouts.
  */
@@ -36,18 +36,18 @@ export async function runUpdate(argv: string[], env: Env, moduleUrl: string = im
   const current = cliVersion();
   const latest = await fetchLatestVersion(env);
   if (compareVersions(latest, current) <= 0) {
-    env.stdout.write(`substackctl ${current} is up to date\n`);
+    env.stdout.write(`sub-cli ${current} is up to date\n`);
     await recordUpdateCheck(env, current);
     return EXIT_SUCCESS;
   }
-  env.stdout.write(`substackctl ${latest} is available (you have ${current})\n`);
-  const install = `npm install -g substackctl@${latest}`;
+  env.stdout.write(`sub-cli ${latest} is available (you have ${current})\n`);
+  const install = `npm install -g @tuanhv/sub-cli@${latest}`;
   if (!npmManagedInstall(moduleUrl)) {
     env.stdout.write(`this copy was not installed by npm; update it with: ${install}\n`);
     return EXIT_FAILURE;
   }
   env.stdout.write('updating via npm...\n');
-  const result = await env.exec.run('npm', ['install', '-g', `substackctl@${latest}`]);
+  const result = await env.exec.run('npm', ['install', '-g', `@tuanhv/sub-cli@${latest}`]);
   if (result.code !== 0) {
     env.stderr.write(`${result.stderr}update failed with exit code ${result.code}; run manually: ${install}\n`);
     return EXIT_FAILURE;

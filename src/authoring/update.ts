@@ -9,7 +9,7 @@ import { AuthError, SubstackClient } from './api.js';
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export const updateUsage =
-  'usage: substackctl post update <id> [--section <name>] [--subtitle <s>] [--slug <slug>] [--profile <name>]';
+  'usage: sub-cli post update <id> [--section <name>] [--subtitle <s>] [--slug <slug>] [--profile <name>]';
 
 export const updateCommand: Subcommand = {
   name: 'update',
@@ -50,7 +50,7 @@ export const updateCommand: Subcommand = {
     const profile = resolveProfile(env, config, profileName);
     warnIfCookieStale(env, profile);
     env.stderr.write(
-      `substackctl: updating post ${id} on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+      `sub-cli: updating post ${id} on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
@@ -81,7 +81,7 @@ export const updateCommand: Subcommand = {
       await client.updateDraft(id, requestBody);
       const fields = await client.draftFields(id);
       if (sectionId !== undefined && fields.draft_section_id !== sectionId) {
-        env.stderr.write(`substackctl: post ${id}: section did not stick (draft_section_id is empty)\n`);
+        env.stderr.write(`sub-cli: post ${id}: section did not stick (draft_section_id is empty)\n`);
         return EXIT_FAILURE;
       }
       env.stdout.write(`updated ${id}\n`);
@@ -92,7 +92,7 @@ export const updateCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return EXIT_AUTH;
       }
       throw error;

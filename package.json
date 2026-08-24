@@ -1,6 +1,6 @@
 {
-  "name": "substackctl",
-  "version": "0.3.0",
+  "name": "@tuanhv/sub-cli",
+  "version": "0.4.0",
   "description": "Command-line tool that manages posts on Substack and reads other people's newsletters",
   "license": "MIT",
   "repository": {
@@ -9,7 +9,7 @@
   },
   "type": "module",
   "bin": {
-    "substackctl": "dist/bin/substackctl.js"
+    "sub-cli": "dist/bin/sub-cli.js"
   },
   "engines": {
     "node": ">=24"

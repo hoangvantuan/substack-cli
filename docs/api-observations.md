@@ -1,6 +1,6 @@
 # Observed Substack API behaviour
 
-**This document records observations from building and running `substackctl`
+**This document records observations from building and running `sub-cli`
 against the live platform. It is not a specification:** Substack does not
 publish one, every statement below was learned empirically, and any of it may
 change without notice. Verify against the live API before relying on a detail

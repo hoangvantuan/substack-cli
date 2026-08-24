@@ -10,7 +10,7 @@ import { availableProfiles, resolveProfile, unwrapCookie, warnIfCookieStale } fr
 const addCommand: Subcommand = {
   name: 'add',
   description: 'record a named profile with its publication URL and cookie',
-  usage: 'usage: substackctl profile add <name> <publication>',
+  usage: 'usage: sub-cli profile add <name> <publication>',
   async run(argv, env) {
     const parsed = parseArgv(argv, {});
     const [name, publication] = parsed.positionals;
@@ -27,7 +27,7 @@ const addCommand: Subcommand = {
     if (config.profiles[name] !== undefined) {
       throw new UsageError(
         `profile already exists: ${name}; to refresh its cookie, run: ` +
-          `substackctl profile login ${name}`,
+          `sub-cli profile login ${name}`,
       );
     }
     const base = publicationBaseUrl(publication);
@@ -41,7 +41,7 @@ const addCommand: Subcommand = {
 const loginCommand: Subcommand = {
   name: 'login',
   description: 're-paste the cookie for an existing profile',
-  usage: 'usage: substackctl profile login <name>',
+  usage: 'usage: sub-cli profile login <name>',
   async run(argv, env) {
     const parsed = parseArgv(argv, {});
     const name = requireName(parsed.positionals);
@@ -60,7 +60,7 @@ const loginCommand: Subcommand = {
 const listCommand: Subcommand = {
   name: 'list',
   description: 'show every profile and mark the default',
-  usage: 'usage: substackctl profile list',
+  usage: 'usage: sub-cli profile list',
   async run(argv, env) {
     const parsed = parseArgv(argv, {});
     if (parsed.positionals.length > 0) {
@@ -95,7 +95,7 @@ const listCommand: Subcommand = {
 const useCommand: Subcommand = {
   name: 'use',
   description: 'set the default profile',
-  usage: 'usage: substackctl profile use <name>',
+  usage: 'usage: sub-cli profile use <name>',
   async run(argv, env) {
     const parsed = parseArgv(argv, {});
     const name = requireName(parsed.positionals);
@@ -113,7 +113,7 @@ const useCommand: Subcommand = {
 const removeCommand: Subcommand = {
   name: 'remove',
   description: 'delete a profile',
-  usage: 'usage: substackctl profile remove <name>',
+  usage: 'usage: sub-cli profile remove <name>',
   async run(argv, env) {
     const parsed = parseArgv(argv, {});
     const name = requireName(parsed.positionals);
@@ -135,7 +135,7 @@ const removeCommand: Subcommand = {
 const checkCommand: Subcommand = {
   name: 'check',
   description: 'call the API and report whether the cookie is still valid',
-  usage: 'usage: substackctl profile check [name] [--no-retry]',
+  usage: 'usage: sub-cli profile check [name] [--no-retry]',
   async run(argv, env) {
     const parsed = parseArgv(argv, { booleans: ['no-retry'] });
     if (parsed.positionals.length > 1) {
@@ -169,13 +169,13 @@ const checkCommand: Subcommand = {
 export const profileGroup: CommandGroup = {
   name: 'profile',
   description: 'manage named publication profiles',
-  usage: 'usage: substackctl profile <subcommand> [options]',
+  usage: 'usage: sub-cli profile <subcommand> [options]',
   subcommands: [addCommand, loginCommand, listCommand, useCommand, removeCommand, checkCommand],
 };
 
 /** Every write command states its profile and publication before acting. */
 function announce(env: Env, verb: string, name: string, publication: string): void {
-  env.stderr.write(`substackctl: ${verb} profile ${name} (${publication})\n`);
+  env.stderr.write(`sub-cli: ${verb} profile ${name} (${publication})\n`);
 }
 
 function requireName(positionals: string[]): string {

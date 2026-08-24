@@ -28,7 +28,7 @@ function runCli(args: string[]): string {
 const api = integrationApi;
 
 test('a created draft is deleted for real and then reads as gone', { skip }, async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'substackctl-delete-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sub-cli-delete-'));
   const file = join(dir, 'doomed.md');
   writeFileSync(file, ['---', 'title: Integration delete me', '---', '', 'Delete this body.'].join('\n'));
   try {

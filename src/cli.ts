@@ -21,7 +21,7 @@ export async function runCli(argv: string[], env: Env): Promise<number> {
     return await dispatch(argv, env);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    env.stderr.write(`substackctl: ${message}\n`);
+    env.stderr.write(`sub-cli: ${message}\n`);
     if (error instanceof RateLimitedError) {
       return EXIT_RATE_LIMIT;
     }
@@ -100,7 +100,7 @@ async function dispatch(argv: string[], env: Env): Promise<number> {
   }
 }
 
-/** The top-level command list shared by `substackctl help` and every usage error. */
+/** The top-level command list shared by `sub-cli help` and every usage error. */
 function topCommandLines(): string[] {
   const width = Math.max(...groups.map((group) => group.name.length), 'update'.length);
   return [
@@ -110,14 +110,14 @@ function topCommandLines(): string[] {
 }
 
 function printTopUsage(env: Env): void {
-  env.stderr.write(['usage: substackctl <command> [options]', '', 'commands:', ...topCommandLines()].join('\n') + '\n');
+  env.stderr.write(['usage: sub-cli <command> [options]', '', 'commands:', ...topCommandLines()].join('\n') + '\n');
 }
 
-/** Handles `substackctl help` and `substackctl help <command>`. */
+/** Handles `sub-cli help` and `sub-cli help <command>`. */
 function helpTopic(topics: string[], env: Env): number {
   const [topic, ...extra] = topics;
   if (topic === 'update') {
-    env.stdout.write('usage: substackctl update\n\nself-update to the latest npm release\n');
+    env.stdout.write('usage: sub-cli update\n\nself-update to the latest npm release\n');
     return EXIT_SUCCESS;
   }
   if (extra.length > 0) {
@@ -140,7 +140,7 @@ function helpTopic(topics: string[], env: Env): number {
 
 function printTopHelp(env: Env): void {
   const lines = [
-    'usage: substackctl <command> [options]',
+    'usage: sub-cli <command> [options]',
     '',
     'commands:',
     ...topCommandLines(),

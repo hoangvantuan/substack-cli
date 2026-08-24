@@ -1,11 +1,11 @@
 ---
-name: substackctl
+name: sub-cli
 description: Manage posts on your Substack publication and read other people's newsletters from the command line. Use when creating, listing, updating, scheduling, publishing, or deleting posts; filing posts into sections; or scanning and crawling public Substack content.
 ---
 
-# substackctl
+# sub-cli
 
-Requires `substackctl` 0.1.0 or later. The skill is installed by hand and not
+Requires `sub-cli` 0.4.0 or later. The skill is installed by hand and not
 version-locked to the package: if a flag below is rejected as unknown, the
 installed CLI is older than this skill assumes — fall back to the usage line
 the command prints and confirm the difference with the human.
@@ -22,7 +22,7 @@ the command prints and confirm the difference with the human.
    - `2` usage error — you invoked the command wrong; fix the arguments from
      the printed usage line. Do not retry unchanged.
    - `3` authentication — the cookie is dead. Ask the human to refresh it with
-     `substackctl profile login <name>`. Nothing else will fix it.
+     `sub-cli profile login <name>`. Nothing else will fix it.
    - `4` rate limited — the ladder was exhausted. Wait a few minutes before
      retrying; do not hammer.
 
@@ -57,9 +57,9 @@ When in doubt about audience, timing, or content, ask before writing.
 A profile pairs a name with one publication URL and one cookie.
 
 ```
-substackctl profile add <name> <publication>   # prompts for the cookie
-substackctl profile check <name>               # proves the cookie is alive
-substackctl profile list / use / remove / login
+sub-cli profile add <name> <publication>   # prompts for the cookie
+sub-cli profile check <name>               # proves the cookie is alive
+sub-cli profile list / use / remove / login
 ```
 
 Cookies expire after one to two weeks; exit code 3 means refresh via login.
@@ -69,35 +69,35 @@ Cookies expire after one to two weeks; exit code 3 means refresh via login.
 Reading (no cookie needed):
 
 ```
-substackctl feed scan <publication> [--limit n] [--all] [--json]
-substackctl feed crawl <url> [--out dir] [--overwrite]
-substackctl feed crawl-all <publication> [--limit n] [--all] [--out dir]
+sub-cli feed scan <publication> [--limit n] [--all] [--json] [--no-retry]
+sub-cli feed crawl <url> [--out dir] [--overwrite] [--no-retry]
+sub-cli feed crawl-all <publication> [--limit n] [--all] [--out dir] [--overwrite] [--no-retry]
 ```
 
 Authoring:
 
 ```
-substackctl post create <file> [--dry-run] [--title t] [--subtitle s] [--section name] [--cover url] [--audience a] [--slug slug]
-substackctl post list [--state draft|scheduled|published] [--limit n] [--json]
-substackctl post update <id> [--section name] [--subtitle s] [--slug slug]
-substackctl post schedule <file> <time> [--audience a]
-substackctl post unschedule <id>
-substackctl post publish <file|--id id> --profile p --yes [--no-send] [--audience a]
-substackctl post delete <id> --yes [--force-published]
-substackctl section list [--json]
-substackctl section add <name> <description>
-substackctl section remove <name-or-id> --yes
-substackctl section set <section-name> <id...>
+sub-cli post create <file> [--dry-run] [--title t] [--subtitle s] [--section name] [--cover url] [--audience a] [--slug slug]
+sub-cli post list [--state draft|scheduled|published] [--limit n] [--json] [--no-retry]
+sub-cli post update <id> [--section name] [--subtitle s] [--slug slug]
+sub-cli post schedule <file> <time> [--audience a]
+sub-cli post unschedule <id>
+sub-cli post publish <file|--id id> --profile p --yes [--no-send] [--audience a]
+sub-cli post delete <id> --yes [--force-published]
+sub-cli section list [--json]
+sub-cli section add <name> <description>
+sub-cli section remove <name-or-id> --yes
+sub-cli section set <section-name> <id...> [--no-retry]
 ```
 
 Self-maintenance:
 
 ```
-substackctl update   # installs the latest npm release of the CLI
+sub-cli update   # installs the latest npm release of the CLI
 ```
 
 After real commands the CLI may print a one-line "update available" notice
-on stderr, at most once a day. Silence it with SUBSTACKCTL_NO_UPDATE_CHECK=1.
+on stderr, at most once a day. Silence it with SUB_CLI_NO_UPDATE_CHECK=1.
 Neither the notice nor `update` touches posts or profiles.
 
 A post file is Markdown with YAML-ish front matter carrying all metadata —

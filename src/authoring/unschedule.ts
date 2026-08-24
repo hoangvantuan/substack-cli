@@ -7,7 +7,7 @@ import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import { AuthError, SubstackClient } from './api.js';
 
 export const unscheduleUsage =
-  'usage: substackctl post unschedule <id> [--profile <name>]';
+  'usage: sub-cli post unschedule <id> [--profile <name>]';
 
 export const unscheduleCommand: Subcommand = {
   name: 'unschedule',
@@ -33,7 +33,7 @@ export const unscheduleCommand: Subcommand = {
     const profile = resolveProfile(env, config, profileName);
     warnIfCookieStale(env, profile);
     env.stderr.write(
-      `substackctl: unscheduling post ${id} on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+      `sub-cli: unscheduling post ${id} on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
@@ -42,13 +42,13 @@ export const unscheduleCommand: Subcommand = {
       const state = await client.draftState(id);
       if (state.published) {
         env.stderr.write(
-          `substackctl: post ${id} is published; there is no scheduled release to remove\n`,
+          `sub-cli: post ${id} is published; there is no scheduled release to remove\n`,
         );
         return EXIT_FAILURE;
       }
       const active = await client.getScheduledRelease(id);
       if (active.length === 0) {
-        env.stderr.write(`substackctl: post ${id} is not scheduled\n`);
+        env.stderr.write(`sub-cli: post ${id} is not scheduled\n`);
         return EXIT_FAILURE;
       }
       await client.unscheduleRelease(id);
@@ -61,7 +61,7 @@ export const unscheduleCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return EXIT_AUTH;
       }
       throw error;

@@ -38,7 +38,7 @@ function runCli(args: string[]): string {
 
 /** Writes one Markdown post plus a local PNG next to it in a fresh temp dir. */
 function makePostDir(body: string, frontMatter = 'title: issue8 images probe'): string {
-  const dir = mkdtempSync(join(tmpdir(), 'substackctl-images-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sub-cli-images-'));
   writeFileSync(join(dir, 'post.md'), `---\n${frontMatter}\n---\n${body}`);
   writeFileSync(join(dir, 'probe.png'), Buffer.from(PNG_BASE64, 'base64'));
   return dir;
@@ -109,7 +109,7 @@ test('a cover is stored as cover_image only and never injected into the body', {
 });
 
 test('a missing local image stops the command with a clear error and no draft', { skip: skipReason }, async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'substackctl-images-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sub-cli-images-'));
   writeFileSync(
     join(dir, 'post.md'),
     '---\ntitle: issue8 missing image probe\n---\n\n![gone](./missing.png)\n',

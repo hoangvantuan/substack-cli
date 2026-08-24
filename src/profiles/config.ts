@@ -29,7 +29,7 @@ export function emptyConfig(): ProfileConfig {
 /** The directory holding the configuration, under the standard config root. */
 export function configDir(env: Env): string {
   const root = env.vars['XDG_CONFIG_HOME'] ?? `${env.homedir()}/.config`;
-  return `${root}/substackctl`;
+  return `${root}/sub-cli`;
 }
 
 export function configPath(env: Env): string {

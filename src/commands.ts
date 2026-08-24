@@ -33,14 +33,14 @@ export const groups: CommandGroup[] = [
   {
     name: 'feed',
     description: 'scan publications without authentication',
-    usage: 'usage: substackctl feed <subcommand> [options]',
+    usage: 'usage: sub-cli feed <subcommand> [options]',
     subcommands: [scanCommand, crawlCommand, crawlAllCommand],
   },
   profileGroup,
   {
     name: 'post',
     description: 'author posts on your own publication',
-    usage: 'usage: substackctl post <subcommand> [options]',
+    usage: 'usage: sub-cli post <subcommand> [options]',
     subcommands: [createCommand, listCommand, deleteCommand, publishCommand, updateCommand, scheduleCommand, unscheduleCommand],
   },
   sectionGroup,

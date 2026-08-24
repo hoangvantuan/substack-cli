@@ -8,12 +8,12 @@ import { compareVersions } from '../src/update/check.js';
 import { runUpdate } from '../src/update/update.js';
 import { jsonResponse, makeEnv, type TestHarness } from './helpers.js';
 
-const REGISTRY_URL = 'https://registry.npmjs.org/substackctl/latest';
-const CHECK_PATH = '/home/tester/.config/substackctl/update-check.json';
+const REGISTRY_URL = 'https://registry.npmjs.org/@tuanhv%2fsub-cli/latest';
+const CHECK_PATH = '/home/tester/.config/sub-cli/update-check.json';
 const HOUR_MS = 60 * 60 * 1000;
 
-const NPM_GLOBAL_URL = 'file:///usr/local/lib/node_modules/substackctl/dist/src/update/update.js';
-const NPX_CACHE_URL = 'file:///home/tester/.npm/_npx/a1b2c3/node_modules/substackctl/dist/src/update/update.js';
+const NPM_GLOBAL_URL = 'file:///usr/local/lib/node_modules/sub-cli/dist/src/update/update.js';
+const NPX_CACHE_URL = 'file:///home/tester/.npm/_npx/a1b2c3/node_modules/sub-cli/dist/src/update/update.js';
 const CHECKOUT_URL = 'file:///repo/substack-cli/dist/src/update/update.js';
 
 interface UpdateHarness extends TestHarness {
@@ -33,7 +33,7 @@ function makeUpdateEnv(
   respond?: (request: HttpRequest) => HttpResponse,
 ): UpdateHarness {
   const h = makeEnv(respond === undefined ? undefined : (request) => respond(request));
-  delete h.env.vars['SUBSTACKCTL_NO_UPDATE_CHECK'];
+  delete h.env.vars['SUB_CLI_NO_UPDATE_CHECK'];
   const files = new Map<string, { contents: string; mode?: number }>();
   const fs: FileSystem = {
     readFile: async (path) => {
@@ -107,7 +107,7 @@ test('update installs the newer release over npm when npm-managed', async () => 
   const h = makeUpdateEnv(registry('9.9.9'));
   const code = await runUpdate([], h.env, NPM_GLOBAL_URL);
   assert.equal(code, EXIT_SUCCESS);
-  assert.deepEqual(h.execs, [{ command: 'npm', args: ['install', '-g', 'substackctl@9.9.9'] }]);
+  assert.deepEqual(h.execs, [{ command: 'npm', args: ['install', '-g', '@tuanhv/sub-cli@9.9.9'] }]);
   assert.match(h.stdout(), /updated to 9\.9\.9/);
   assert.deepEqual(JSON.parse(h.files.get(CHECK_PATH)!.contents), {
     checkedAt: 1_750_000_000_000,
@@ -121,7 +121,7 @@ test('update surfaces npm failures and the manual command', async () => {
   const code = await runUpdate([], h.env, NPM_GLOBAL_URL);
   assert.equal(code, EXIT_FAILURE);
   assert.match(h.stderr(), /npm ERR! oh no/);
-  assert.match(h.stderr(), /run manually: npm install -g substackctl@9\.9\.9/);
+  assert.match(h.stderr(), /run manually: npm install -g @tuanhv\/sub-cli@9\.9\.9/);
   assert.doesNotMatch(h.stdout(), /updated to/);
   assert.equal(h.files.has(CHECK_PATH), false);
 });
@@ -131,7 +131,7 @@ test('update without an npm install prints the manual command and installs nothi
     const h = makeUpdateEnv(registry('9.9.9'));
     const code = await runUpdate([], h.env, moduleUrl);
     assert.equal(code, EXIT_FAILURE);
-    assert.match(h.stdout(), /npm install -g substackctl@9\.9\.9/);
+    assert.match(h.stdout(), /npm install -g @tuanhv\/sub-cli@9\.9\.9/);
     assert.equal(h.execs.length, 0);
   }
 });
@@ -157,7 +157,7 @@ test('a real command warns on stderr when a newer release exists', async () => {
   const code = await runCliWithUpdateNotice(['profile', 'list'], h.env);
   assert.equal(code, EXIT_SUCCESS);
   assert.equal(h.stdout(), 'no profiles are configured\n');
-  assert.match(h.stderr(), /substackctl 9\.9\.9 is available; run "substackctl update" to upgrade/);
+  assert.match(h.stderr(), /sub-cli 9\.9\.9 is available; run "sub-cli update" to upgrade/);
   assert.equal(h.registryRequests(), 1);
 });
 
@@ -199,9 +199,9 @@ test('a failed check is cached so an offline machine stays quiet for a day', asy
   assert.equal(h.registryRequests(), 1);
 });
 
-test('SUBSTACKCTL_NO_UPDATE_CHECK skips the check entirely', async () => {
+test('SUB_CLI_NO_UPDATE_CHECK skips the check entirely', async () => {
   const h = makeUpdateEnv(registry('9.9.9'));
-  h.env.vars['SUBSTACKCTL_NO_UPDATE_CHECK'] = '1';
+  h.env.vars['SUB_CLI_NO_UPDATE_CHECK'] = '1';
   const code = await runCliWithUpdateNotice(['profile', 'list'], h.env);
   assert.equal(code, EXIT_SUCCESS);
   assert.equal(h.stderr(), '');

@@ -13,7 +13,7 @@ import {
 } from './api.js';
 
 export const listUsage =
-  'usage: substackctl post list [--state <draft|scheduled|published>] [--limit <n>]\n' +
+  'usage: sub-cli post list [--state <draft|scheduled|published>] [--limit <n>]\n' +
   '                             [--json] [--profile <name>] [--no-retry]';
 
 export const DEFAULT_LIMIT = 10;
@@ -60,7 +60,7 @@ export const listCommand: Subcommand = {
       posts = await listPosts(client, state as PostState, limit);
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return EXIT_AUTH;
       }
       throw error;

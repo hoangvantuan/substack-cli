@@ -7,7 +7,7 @@ import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import { AuthError, SubstackClient } from './api.js';
 
 export const deleteUsage =
-  'usage: substackctl post delete <id> --yes [--force-published] [--profile <name>]';
+  'usage: sub-cli post delete <id> --yes [--force-published] [--profile <name>]';
 
 export const deleteCommand: Subcommand = {
   name: 'delete',
@@ -40,7 +40,7 @@ export const deleteCommand: Subcommand = {
     warnIfCookieStale(env, profile);
     const forcePublished = parsed.values.get('force-published') === true;
     env.stderr.write(
-      `substackctl: deleting post ${id} on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+      `sub-cli: deleting post ${id} on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
@@ -49,7 +49,7 @@ export const deleteCommand: Subcommand = {
       const state = await client.draftState(id);
       if (state.published && !forcePublished) {
         env.stderr.write(
-          `substackctl: post ${id} is published and cannot be recalled; ` +
+          `sub-cli: post ${id} is published and cannot be recalled; ` +
             `deleting it also removes it for every subscriber. ` +
             `Pass --force-published to delete it anyway\n`,
         );
@@ -60,7 +60,7 @@ export const deleteCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return EXIT_AUTH;
       }
       throw error;

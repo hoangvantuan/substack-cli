@@ -16,7 +16,7 @@ import { BASE_URL, COOKIE, integrationApi } from './env.js';
  * `npm run test:integration`. Credentials come from SUBSTACK_COOKIE and
  * SUBSTACK_PUBLICATION_URL via authoring.test.ts.
  */
-const BIN = new URL('../../../dist/bin/substackctl.js', import.meta.url);
+const BIN = new URL('../../../dist/bin/sub-cli.js', import.meta.url);
 
 interface JsonRecord {
   [key: string]: unknown;
@@ -37,7 +37,7 @@ function runCli(args: string[]): string {
 }
 
 function writePostFile(name: string, title: string, body: string): string {
-  const dir = mkdtempSync(join(tmpdir(), 'substackctl-publish-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sub-cli-publish-'));
   const file = join(dir, name);
   writeFileSync(file, ['---', `title: ${title}`, '---', '', body].join('\n'));
   return file;

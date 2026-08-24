@@ -1,4 +1,4 @@
-# substackctl
+# sub-cli
 
 A command-line tool that manages posts on your Substack publication and reads
 other people's newsletters. Ships with an agent skill that teaches AI agents
@@ -9,13 +9,13 @@ Requires Node.js 24 or later. No runtime dependencies.
 ## Installation
 
 ```
-npm install -g substackctl
+npm install -g @tuanhv/sub-cli
 ```
 
 Or run it without a global install:
 
 ```
-npx substackctl <command> ...
+npx @tuanhv/sub-cli <command> ...
 ```
 
 For hacking on the tool itself, see [Development](#development) below.
@@ -33,21 +33,21 @@ one cookie.
 2. Register a profile (the terminal prompts for the cookie without echoing):
 
    ```
-   substackctl profile add mypub https://mypub.substack.com
+   sub-cli profile add mypub https://mypub.substack.com
    ```
 
-   Tip: you can pipe it instead — `pbpaste | substackctl profile add mypub ...`.
+   Tip: you can pipe it instead — `pbpaste | sub-cli profile add mypub ...`.
 
 3. Check it works:
 
    ```
-   substackctl profile check mypub     # exit 0 = alive, exit 3 = expired
-   substackctl profile use mypub       # make it the default
+   sub-cli profile check mypub     # exit 0 = alive, exit 3 = expired
+   sub-cli profile use mypub       # make it the default
    ```
 
-Profiles live in `$XDG_CONFIG_HOME/substackctl/config.json`
-(`~/.config/substackctl/config.json`), written owner-readable only. Cookies
-expire after one to two weeks; refresh with `substackctl profile login <name>`.
+Profiles live in `$XDG_CONFIG_HOME/sub-cli/config.json`
+(`~/.config/sub-cli/config.json`), written owner-readable only. Cookies
+expire after one to two weeks; refresh with `sub-cli profile login <name>`.
 The environment variables `SUBSTACK_PUBLICATION_URL` and `SUBSTACK_COOKIE`
 override any stored profile when both are set.
 
@@ -56,47 +56,52 @@ override any stored profile when both are set.
 General:
 
 ```
-substackctl help [command]   # top-level help, or one command group's help
-substackctl --version
-substackctl update           # self-update to the latest npm release
+sub-cli help [command]   # top-level help, or one command group's help
+sub-cli --version
+sub-cli update           # self-update to the latest npm release
 ```
 
 After a real command the CLI may print a one-line "update available" notice
 on stderr, checked at most once a day and cached under the config directory.
-Set `SUBSTACKCTL_NO_UPDATE_CHECK=1` to silence it. `substackctl update`
+Set `SUB_CLI_NO_UPDATE_CHECK=1` to silence it. `sub-cli update`
 installs the latest release when the CLI lives in an npm install; otherwise
 it prints the exact command to run.
 
 Reading — no cookie, works on any public publication:
 
 ```
-substackctl feed scan <publication> [--limit n] [--all] [--json]
-substackctl feed crawl <url> [--out dir] [--overwrite]
-substackctl feed crawl-all <publication> [--limit n] [--all] [--out dir] [--overwrite]
+sub-cli feed scan <publication> [--limit n] [--all] [--json] [--no-retry]
+sub-cli feed crawl <url> [--out dir] [--overwrite] [--no-retry]
+sub-cli feed crawl-all <publication> [--limit n] [--all] [--out dir] [--overwrite] [--no-retry]
 ```
 
 Writing — uses a profile:
 
 ```
-substackctl post create <file> [--dry-run] [--title t] [--subtitle s]
+sub-cli post create <file> [--dry-run] [--title t] [--subtitle s]
                               [--section name] [--cover url] [--audience a] [--slug slug]
-substackctl post list [--state draft|scheduled|published] [--limit n] [--json]
-substackctl post update <id> [--section name] [--subtitle s] [--slug slug]
-substackctl post schedule <file> <time> [--audience a]
-substackctl post unschedule <id>
-substackctl post delete <id> --yes [--force-published]
-substackctl section list [--json]
-substackctl section add <name> <description>
-substackctl section remove <name-or-id> --yes
-substackctl section set <section-name> <id...>
+sub-cli post list [--state draft|scheduled|published] [--limit n] [--json] [--no-retry]
+sub-cli post update <id> [--section name] [--subtitle s] [--slug slug]
+sub-cli post schedule <file> <time> [--audience a]
+sub-cli post unschedule <id>
+sub-cli post delete <id> --yes [--force-published]
+sub-cli section list [--json]
+sub-cli section add <name> <description>
+sub-cli section remove <name-or-id> --yes
+sub-cli section set <section-name> <id...> [--no-retry]
 ```
 
 Publishing — irreversible, guarded twice per ADR-0004:
 
 ```
-substackctl post publish <file> --profile p --yes [--no-send] [--audience a]
-substackctl post publish --id <n> --profile p --yes [--no-send] [--audience a]
+sub-cli post publish <file> --profile p --yes [--no-send] [--audience a]
+sub-cli post publish --id <n> --profile p --yes [--no-send] [--audience a]
 ```
+
+Commands that talk to the API retry on rate limits with a paced backoff
+ladder, then exit 4. Pass `--no-retry` to make a single attempt instead;
+the reading commands, `post list`, `section set`, and `profile check`
+accept it.
 
 ### Post files
 
@@ -146,7 +151,7 @@ Substack's schema has no node for.
 
 ## Agent skill
 
-The repository ships `skills/substackctl/SKILL.md`, a skill file that teaches
+The repository ships `skills/sub-cli/SKILL.md`, a skill file that teaches
 AI coding agents the CLI's judgement calls: which operations are safe to run
 unattended, which need human confirmation (publishing, deleting published
 posts), what each exit code calls for, and the habit of passing `--profile`
@@ -154,10 +159,10 @@ explicitly and reading `--json`.
 
 Install it by hand by copying the directory into your agent's skill folder:
 
-- Claude Code: `~/.claude/skills/substackctl/SKILL.md`
+- Claude Code: `~/.claude/skills/sub-cli/SKILL.md`
 - Any agent that reads markdown skills: point it at the file.
 
-The skill assumes CLI 0.1.0 or later and is versioned independently of the
+The skill assumes CLI 0.4.0 or later and is versioned independently of the
 package.
 
 ## Development
@@ -172,11 +177,13 @@ npm run test:integration   # real-API suite; needs SUBSTACK_COOKIE +
 ```
 ## Releasing
 
-0.1.0 was bootstrapped with a manual, 2FA-protected `npm publish`. Later
-releases go through CI with trusted publishing (OIDC): in the package's
-npmjs.com Settings, Trusted publishing points at GitHub Actions for
-`hoangvantuan/substack-cli` with workflow filename `release.yml`. After that
-one-time setup, every release is just `git tag vX.Y.Z &&
+The package was renamed from `substackctl` to `@tuanhv/sub-cli` at 0.4.0
+(ADR-0005); the old name was unpublished from npm. 0.4.0 itself was
+bootstrapped with a manual, 2FA-protected `npm publish --access public`.
+Later releases go through CI with trusted publishing (OIDC): in the
+package's npmjs.com Settings, Trusted publishing points at GitHub Actions
+for `hoangvantuan/substack-cli` with workflow filename `release.yml`. After
+that one-time setup, every release is just `git tag vX.Y.Z &&
 git push origin vX.Y.Z`; the workflow publishes with a short-lived OIDC
 credential and a provenance attestation, no npm token secret involved.
 Once it works, set Publishing access to "Require two-factor authentication

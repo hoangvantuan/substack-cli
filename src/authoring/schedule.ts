@@ -11,7 +11,7 @@ import { AuthError, SubstackClient } from './api.js';
 import { dirnameOf, uploadLocalImages } from './images.js';
 
 export const scheduleUsage =
-  'usage: substackctl post schedule <file> <time> [--audience <a>] [--profile <name>]\n' +
+  'usage: sub-cli post schedule <file> <time> [--audience <a>] [--profile <name>]\n' +
   '       <time> is ISO 8601: 2026-12-24T09:30 or 2026-12-24 09:30 means\n' +
   '       machine-local time; 2026-12-24T09:30+07:00 or ...Z is used as given';
 
@@ -137,7 +137,7 @@ export const scheduleCommand: Subcommand = {
     const profile = resolveProfile(env, config, flag('profile'));
     warnIfCookieStale(env, profile);
     env.stderr.write(
-      `substackctl: scheduling a post on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+      `sub-cli: scheduling a post on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
@@ -202,7 +202,7 @@ export const scheduleCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return EXIT_AUTH;
       }
       throw error;

@@ -51,7 +51,7 @@ async function realRequest(request: HttpRequest): Promise<HttpResponse> {
 }
 /**
  * Runs a child command to completion with captured output. It blocks while
- * the child runs: `substackctl update` is the only caller and has nothing
+ * the child runs: `sub-cli update` is the only caller and has nothing
  * else to do meanwhile. A null status means the child could not start.
  */
 async function runChild(command: string, args: readonly string[]): Promise<ExecResult> {

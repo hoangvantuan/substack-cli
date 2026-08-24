@@ -1,4 +1,4 @@
-# Publishes substackctl to npm via trusted publishing (OIDC) when a version
+# Publishes @tuanhv/sub-cli to npm via trusted publishing (OIDC) when a version
 # tag is pushed. Provenance attestations are generated automatically.
 #
 # One-time setup on npmjs.com (needs the package to exist, so it bootstrapped

@@ -188,7 +188,7 @@ export class SubstackClient {
     if (response.status === 401 || response.status === 403) {
       throw new AuthError(
         `the publication rejected the cookie (HTTP ${response.status}); ` +
-          `refresh it with: substackctl profile login`,
+          `refresh it with: sub-cli profile login`,
       );
     }
     let parsed: unknown;
@@ -330,7 +330,7 @@ export class SubstackClient {
     if (response.status === 401 || response.status === 403) {
       throw new AuthError(
         `the publication rejected the cookie (HTTP ${response.status}); ` +
-          `refresh it with: substackctl profile login`,
+          `refresh it with: sub-cli profile login`,
       );
     }
     let parsed: unknown;

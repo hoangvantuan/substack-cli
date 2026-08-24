@@ -64,7 +64,7 @@ test('a missing publication is a usage error', async () => {
   const code = await runCli(['feed', 'scan'], h.env);
   assert.equal(code, 2);
   assert.match(h.stderr(), /missing <publication>/);
-  assert.match(h.stderr(), /usage: substackctl feed scan/);
+  assert.match(h.stderr(), /usage: sub-cli feed scan/);
 });
 
 test('an extra positional is a usage error', async () => {

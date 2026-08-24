@@ -56,7 +56,7 @@ export function makeEnv(
     },
     // The update warning has its own suite; every other test stays offline
     // and deterministic by default.
-    vars: { SUBSTACKCTL_NO_UPDATE_CHECK: '1' },
+    vars: { SUB_CLI_NO_UPDATE_CHECK: '1' },
     homedir: () => '/home/tester',
   };
   return { env, requests, execs, sleeps, stdout: () => out.join(''), stderr: () => err.join('') };

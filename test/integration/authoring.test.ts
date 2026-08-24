@@ -62,7 +62,7 @@ async function ownerId(): Promise<number> {
 }
 
 async function createDraftFile(name: string, frontMatter: string[], body: string): Promise<string> {
-  const dir = mkdtempSync(join(tmpdir(), 'substackctl-integration-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sub-cli-integration-'));
   const file = join(dir, name);
   writeFileSync(file, ['---', ...frontMatter, '---', '', body].join('\n'));
   return file;
@@ -124,7 +124,7 @@ test('every supported construct survives the create and re-read round trip', { s
 test('the front matter section is assigned by the update step and verified on draft_section_id', { skip: skipReason }, async () => {
   const created = await api('POST', '/api/v1/publication/sections', {
     name: `integration section ${Date.now()}`,
-    description: 'temporary section for the substackctl integration suite',
+    description: 'temporary section for the sub-cli integration suite',
   });
   assert.equal(created.status, 200);
   const section = (created.json as JsonRecord)['section'] as JsonRecord;

@@ -78,9 +78,9 @@ export function warnIfCookieStale(env: Env, profile: ResolvedProfile): void {
   }
   const name = profile.name ?? 'this profile';
   env.stderr.write(
-    `substackctl: warning: the cookie for ${name} is ${Math.floor(age / MS_PER_DAY)} days old ` +
+    `sub-cli: warning: the cookie for ${name} is ${Math.floor(age / MS_PER_DAY)} days old ` +
       `and Substack cookies expire after one to two weeks; ` +
-      `refresh it with: substackctl profile login ${name}\n`,
+      `refresh it with: sub-cli profile login ${name}\n`,
   );
 }
 
@@ -110,7 +110,7 @@ export function unwrapCookie(pasted: string): string {
 export function availableProfiles(config: ProfileConfig): string {
   const names = Object.keys(config.profiles);
   if (names.length === 0) {
-    return 'no profiles are configured; add one with: substackctl profile add <name> <publication>';
+    return 'no profiles are configured; add one with: sub-cli profile add <name> <publication>';
   }
   return `available profiles: ${names.join(', ')}`;
 }

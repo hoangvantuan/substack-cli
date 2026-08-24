@@ -34,7 +34,7 @@ export async function requestWithRetry(
     }
     const delay = delayFor(response, attempt, env.clock());
     env.stderr.write(
-      `substackctl: rate limited; retry ${attempt + 1} of ${maxRetries} after ${delay}ms\n`,
+      `sub-cli: rate limited; retry ${attempt + 1} of ${maxRetries} after ${delay}ms\n`,
     );
     await env.sleep(delay);
     attempt += 1;

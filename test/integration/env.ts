@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
  * register its tests a second time.
  */
 
-const BIN = new URL('../../../dist/bin/substackctl.js', import.meta.url);
+const BIN = new URL('../../../dist/bin/sub-cli.js', import.meta.url);
 export { BIN };
 
 function loadDotEnv(): Record<string, string> {

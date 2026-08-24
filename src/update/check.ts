@@ -2,7 +2,7 @@ import type { Env } from '../env/types.js';
 import { configDir } from '../profiles/config.js';
 import { cliVersion } from '../version.js';
 
-export const REGISTRY_LATEST_URL = 'https://registry.npmjs.org/substackctl/latest';
+export const REGISTRY_LATEST_URL = 'https://registry.npmjs.org/@tuanhv%2fsub-cli/latest';
 
 /** How long one update check stays fresh: a day per machine, like npm itself. */
 export const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -105,11 +105,11 @@ export async function recordUpdateCheck(env: Env, latest: string | null): Promis
 /**
  * Prints a one-line notice on stderr when a newer release exists. Every
  * failure (offline, registry trouble, cache trouble) stays silent so this
- * can never break the command it follows. Set SUBSTACKCTL_NO_UPDATE_CHECK
+ * can never break the command it follows. Set SUB_CLI_NO_UPDATE_CHECK
  * to skip the check entirely.
  */
 export async function warnIfUpdateAvailable(env: Env): Promise<void> {
-  if ((env.vars['SUBSTACKCTL_NO_UPDATE_CHECK'] ?? '') !== '') {
+  if ((env.vars['SUB_CLI_NO_UPDATE_CHECK'] ?? '') !== '') {
     return;
   }
   try {
@@ -128,7 +128,7 @@ export async function warnIfUpdateAvailable(env: Env): Promise<void> {
       await recordUpdateCheck(env, latest);
     }
     if (latest !== null && compareVersions(latest, cliVersion()) > 0) {
-      env.stderr.write(`substackctl ${latest} is available; run "substackctl update" to upgrade\n`);
+      env.stderr.write(`sub-cli ${latest} is available; run "sub-cli update" to upgrade\n`);
     }
   } catch {
     // A background convenience must never surface as a command failure.

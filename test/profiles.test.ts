@@ -6,8 +6,8 @@ import { EXIT_AUTH, EXIT_FAILURE, EXIT_SUCCESS, EXIT_USAGE } from '../src/exit.j
 import { jsonResponse, makeEnv, type TestHarness } from './helpers.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const CONFIG_PATH = '/home/tester/.config/substackctl/config.json';
-const CONFIG_DIR = '/home/tester/.config/substackctl';
+const CONFIG_PATH = '/home/tester/.config/sub-cli/config.json';
+const CONFIG_DIR = '/home/tester/.config/sub-cli';
 const PUBLICATION = 'https://tuanhvtest.substack.com';
 const COOKIE = 'sid-value-123';
 const DRAFTS_URL = `${PUBLICATION}/api/v1/drafts?limit=1&offset=0`;
@@ -113,7 +113,7 @@ test('profile add honours XDG_CONFIG_HOME', async () => {
   const h = makeProfileEnv();
   h.env.vars['XDG_CONFIG_HOME'] = '/xdg-root';
   await runCli(['profile', 'add', 'testpub', PUBLICATION], h.env);
-  assert.ok(h.files.has('/xdg-root/substackctl/config.json'));
+  assert.ok(h.files.has('/xdg-root/sub-cli/config.json'));
 });
 
 test('profile add on an existing name exits 2 without prompting again', async () => {
@@ -401,7 +401,7 @@ test('a configuration file with an unsupported schema version exits 1', async ()
 test('profile without a subcommand exits 2 and the group appears in the top usage', async () => {
   const h = makeProfileEnv();
   assert.equal(await runCli(['profile'], h.env), EXIT_USAGE);
-  assert.match(h.stderr(), /usage: substackctl profile/);
+  assert.match(h.stderr(), /usage: sub-cli profile/);
   await runCli([], h.env);
   assert.match(h.stderr(), /profile\s+manage named publication profiles/);
 });

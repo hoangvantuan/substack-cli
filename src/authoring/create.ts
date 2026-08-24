@@ -11,7 +11,7 @@ import { dirnameOf, localImageSources, uploadLocalImages } from './images.js';
 import { AuthError, SubstackClient } from './api.js';
 
 export const createUsage =
-  'usage: substackctl post create <file> [--profile <name>] [--dry-run] [--title <t>]\n' +
+  'usage: sub-cli post create <file> [--profile <name>] [--dry-run] [--title <t>]\n' +
   '                                  [--subtitle <s>] [--section <name>] [--cover <url>]\n' +
   '                                  [--audience <a>] [--slug <slug>]';
 
@@ -92,7 +92,7 @@ export const createCommand: Subcommand = {
     const config = await loadConfig(env);
     const profile = resolveProfile(env, config, flag('profile'));
     warnIfCookieStale(env, profile);
-    env.stderr.write(`substackctl: creating a draft on profile ${profile.name ?? 'environment'} (${profile.publication})\n`);
+    env.stderr.write(`sub-cli: creating a draft on profile ${profile.name ?? 'environment'} (${profile.publication})\n`);
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
       const bylineUserId = await client.ownerUserId();
@@ -145,7 +145,7 @@ export const createCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return EXIT_AUTH;
       }
       throw error;

@@ -6,7 +6,7 @@ import { DEFAULT_LIMIT, scanArchive, scanRecent, type PostSummary } from './feed
 import { publicationBaseUrl } from './publication.js';
 
 export const scanUsage =
-  'usage: substackctl feed scan <publication> [--limit <n>] [--all] [--json] [--no-retry]';
+  'usage: sub-cli feed scan <publication> [--limit <n>] [--all] [--json] [--no-retry]';
 
 export const scanCommand: Subcommand = {
   name: 'scan',

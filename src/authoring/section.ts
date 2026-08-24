@@ -6,7 +6,7 @@ import { loadConfig } from '../profiles/config.js';
 import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import { AuthError, SubstackClient, type SectionSummary } from './api.js';
 
-export const SECTION_GROUP_USAGE = 'usage: substackctl section <subcommand> [options]';
+export const SECTION_GROUP_USAGE = 'usage: sub-cli section <subcommand> [options]';
 
 /** Milliseconds paced between assignment requests when filing many posts. */
 export const SECTION_SET_PACE_MS = 500;
@@ -14,7 +14,7 @@ export const SECTION_SET_PACE_MS = 500;
 const listCommand: Subcommand = {
   name: 'list',
   description: "list the publication's sections",
-  usage: 'usage: substackctl section list [--json] [--profile <name>]',
+  usage: 'usage: sub-cli section list [--json] [--profile <name>]',
   async run(argv, env) {
     const parsed = parseArgv(argv, { booleans: ['json'], strings: ['profile'] });
     if (parsed.positionals.length > 0) {
@@ -54,7 +54,7 @@ const listCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return 3;
       }
       throw error;
@@ -65,7 +65,7 @@ const listCommand: Subcommand = {
 const addCommand: Subcommand = {
   name: 'add',
   description: 'create a section on the publication',
-  usage: 'usage: substackctl section add <name> <description> [--profile <name>]',
+  usage: 'usage: sub-cli section add <name> <description> [--profile <name>]',
   async run(argv, env) {
     const parsed = parseArgv(argv, { strings: ['profile'] });
     const name = parsed.positionals[0];
@@ -85,7 +85,7 @@ const addCommand: Subcommand = {
     const profile = resolveProfile(env, config, profileFlag(parsed.values.get('profile')));
     warnIfCookieStale(env, profile);
     env.stderr.write(
-      `substackctl: adding section "${name}" on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+      `sub-cli: adding section "${name}" on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
@@ -102,7 +102,7 @@ const addCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return 3;
       }
       throw error;
@@ -113,7 +113,7 @@ const addCommand: Subcommand = {
 const removeCommand: Subcommand = {
   name: 'remove',
   description: 'delete a section from the publication',
-  usage: 'usage: substackctl section remove <name-or-id> --yes [--profile <name>]',
+  usage: 'usage: sub-cli section remove <name-or-id> --yes [--profile <name>]',
   async run(argv, env) {
     const parsed = parseArgv(argv, { strings: ['profile'], booleans: ['yes'] });
     const target = parsed.positionals[0];
@@ -133,7 +133,7 @@ const removeCommand: Subcommand = {
     const profile = resolveProfile(env, config, profileFlag(parsed.values.get('profile')));
     warnIfCookieStale(env, profile);
     env.stderr.write(
-      `substackctl: removing section "${target}" on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+      `sub-cli: removing section "${target}" on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
@@ -153,7 +153,7 @@ const removeCommand: Subcommand = {
       return EXIT_SUCCESS;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return 3;
       }
       throw error;
@@ -164,7 +164,7 @@ const removeCommand: Subcommand = {
 const setCommand: Subcommand = {
   name: 'set',
   description: 'assign a section to several posts in one command',
-  usage: 'usage: substackctl section set <section-name> <id...> [--profile <name>] [--no-retry]',
+  usage: 'usage: sub-cli section set <section-name> <id...> [--profile <name>] [--no-retry]',
   async run(argv, env) {
     const parsed = parseArgv(argv, { strings: ['profile'], booleans: ['no-retry'] });
     const sectionName = parsed.positionals[0];
@@ -187,7 +187,7 @@ const setCommand: Subcommand = {
     const profile = resolveProfile(env, config, profileName);
     warnIfCookieStale(env, profile);
     env.stderr.write(
-      `substackctl: setting section "${sectionName}" on ${ids.length} post(s) on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+      `sub-cli: setting section "${sectionName}" on ${ids.length} post(s) on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     try {
@@ -210,7 +210,7 @@ const setCommand: Subcommand = {
         if (fields.draft_section_id !== section.id) {
           failures += 1;
           env.stderr.write(
-            `substackctl: post ${id}: section did not stick (draft_section_id is empty)\n`,
+            `sub-cli: post ${id}: section did not stick (draft_section_id is empty)\n`,
           );
         }
         env.stdout.write(`filed ${id} under ${section.name}\n`);
@@ -218,7 +218,7 @@ const setCommand: Subcommand = {
       return failures === 0 ? EXIT_SUCCESS : EXIT_FAILURE;
     } catch (error) {
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return 3;
       }
       throw error;

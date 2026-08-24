@@ -7,7 +7,7 @@ test('no arguments prints usage on stderr and exits 2', async () => {
   const h = makeEnv();
   const code = await runCli([], h.env);
   assert.equal(code, 2);
-  assert.match(h.stderr(), /usage: substackctl/);
+  assert.match(h.stderr(), /usage: sub-cli/);
   assert.equal(h.stdout(), '');
   assert.equal(h.requests.length, 0);
 });
@@ -17,7 +17,7 @@ test('unknown command prints usage on stderr and exits 2', async () => {
   const code = await runCli(['bogus'], h.env);
   assert.equal(code, 2);
   assert.match(h.stderr(), /unknown command: bogus/);
-  assert.match(h.stderr(), /usage: substackctl/);
+  assert.match(h.stderr(), /usage: sub-cli/);
 });
 
 test('the usage error lists every command, update included', async () => {
@@ -31,7 +31,7 @@ test('help update prints the update usage on stdout', async () => {
   const h = makeEnv();
   const code = await runCli(['help', 'update'], h.env);
   assert.equal(code, 0);
-  assert.match(h.stdout(), /usage: substackctl update/);
+  assert.match(h.stdout(), /usage: sub-cli update/);
   assert.equal(h.stderr(), '');
 });
 
@@ -39,7 +39,7 @@ test('feed without a subcommand exits 2', async () => {
   const h = makeEnv();
   const code = await runCli(['feed'], h.env);
   assert.equal(code, 2);
-  assert.match(h.stderr(), /usage: substackctl feed/);
+  assert.match(h.stderr(), /usage: sub-cli feed/);
 });
 
 test('feed with an unknown subcommand exits 2', async () => {
@@ -53,7 +53,7 @@ test('--help prints commands and options on stdout and exits 0', async () => {
   const h = makeEnv();
   const code = await runCli(['--help'], h.env);
   assert.equal(code, 0);
-  assert.match(h.stdout(), /usage: substackctl <command>/);
+  assert.match(h.stdout(), /usage: sub-cli <command>/);
   assert.match(h.stdout(), /--version/);
   assert.equal(h.stderr(), '');
 });
@@ -62,7 +62,7 @@ test('help prints the same top-level help on stdout', async () => {
   const h = makeEnv();
   const code = await runCli(['help'], h.env);
   assert.equal(code, 0);
-  assert.match(h.stdout(), /usage: substackctl <command>/);
+  assert.match(h.stdout(), /usage: sub-cli <command>/);
   assert.equal(h.stderr(), '');
 });
 
@@ -70,7 +70,7 @@ test('help <command> prints the group usage and its subcommands', async () => {
   const h = makeEnv();
   const code = await runCli(['help', 'feed'], h.env);
   assert.equal(code, 0);
-  assert.match(h.stdout(), /usage: substackctl feed/);
+  assert.match(h.stdout(), /usage: sub-cli feed/);
   assert.match(h.stdout(), /scan/);
   assert.equal(h.stderr(), '');
 });
@@ -79,7 +79,7 @@ test('<command> help prints the group help', async () => {
   const h = makeEnv();
   const code = await runCli(['feed', 'help'], h.env);
   assert.equal(code, 0);
-  assert.match(h.stdout(), /usage: substackctl feed/);
+  assert.match(h.stdout(), /usage: sub-cli feed/);
   assert.equal(h.stderr(), '');
 });
 
@@ -87,7 +87,7 @@ test('<command> --help prints the group help', async () => {
   const h = makeEnv();
   const code = await runCli(['feed', '--help'], h.env);
   assert.equal(code, 0);
-  assert.match(h.stdout(), /usage: substackctl feed/);
+  assert.match(h.stdout(), /usage: sub-cli feed/);
 });
 
 test('help with an unknown command exits 2', async () => {

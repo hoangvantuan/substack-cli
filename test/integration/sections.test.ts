@@ -40,7 +40,7 @@ async function cleanup(): Promise<void> {
 }
 
 function createDraftFile(name: string, title: string): string {
-  const dir = mkdtempSync(join(tmpdir(), 'substackctl-sections-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sub-cli-sections-'));
   const file = join(dir, name);
   writeFileSync(file, ['---', `title: ${title}`, '---', '', 'Body before the metadata fix.'].join('\n'));
   return file;
@@ -52,7 +52,7 @@ test('section set files several posts and post update fixes metadata in one requ
     const uniqueSlug = `integration-sections-fixed-${Date.now()}`;
     const created = await api('POST', '/api/v1/publication/sections', {
       name: sectionName,
-      description: 'temporary section for the substackctl sections integration suite',
+      description: 'temporary section for the sub-cli sections integration suite',
     });
     assert.equal(created.status, 200);
     const section = ((created.json as JsonRecordLike)['section'] ?? created.json) as JsonRecordLike;

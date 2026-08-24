@@ -33,7 +33,7 @@ function wait(ms: number): Promise<void> {
 }
 
 test('a scheduled post appears under the scheduled filter and unschedules back to a draft', { skip }, async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'substackctl-schedule-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sub-cli-schedule-'));
   const file = join(dir, 'later.md');
   writeFileSync(file, ['---', 'title: Integration schedule me', '---', '', 'Schedule this body.'].join('\n'));
   // A timezone-less time exercises the machine-local interpretation end to end.

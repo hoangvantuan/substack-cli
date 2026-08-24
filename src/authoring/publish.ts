@@ -10,8 +10,8 @@ import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import { AuthError, SubstackClient } from './api.js';
 
 export const publishUsage =
-  'usage: substackctl post publish <file> --profile <name> --yes [--no-send] [--audience <a>]\n' +
-  '       substackctl post publish --id <identifier> --profile <name> --yes [--no-send] [--audience <a>]';
+  'usage: sub-cli post publish <file> --profile <name> --yes [--no-send] [--audience <a>]\n' +
+  '       sub-cli post publish --id <identifier> --profile <name> --yes [--no-send] [--audience <a>]';
 
 const AUDIENCES: Record<string, true> = { everyone: true, only_paid: true, only_free: true, founding: true };
 
@@ -112,7 +112,7 @@ export const publishCommand: Subcommand = {
     const profile = resolveProfile(env, config, flag('profile'));
     warnIfCookieStale(env, profile);
     env.stderr.write(
-      `substackctl: publishing on profile ${profile.name ?? 'environment'} (${profile.publication}); this cannot be undone\n`,
+      `sub-cli: publishing on profile ${profile.name ?? 'environment'} (${profile.publication}); this cannot be undone\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
     // Set once a draft exists that this command made: a failure after that
@@ -169,7 +169,7 @@ export const publishCommand: Subcommand = {
         }
       }
       if (error instanceof AuthError) {
-        env.stderr.write(`substackctl: ${error.message}\n`);
+        env.stderr.write(`sub-cli: ${error.message}\n`);
         return EXIT_AUTH;
       }
       throw error;

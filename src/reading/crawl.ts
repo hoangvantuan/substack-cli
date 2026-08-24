@@ -19,10 +19,10 @@ import { publicationBaseUrl } from './publication.js';
 export const CRAWL_PACE_MS = 500;
 
 export const crawlUsage =
-  'usage: substackctl feed crawl <url> [--out <dir>] [--overwrite] [--no-retry]';
+  'usage: sub-cli feed crawl <url> [--out <dir>] [--overwrite] [--no-retry]';
 
 export const crawlAllUsage =
-  'usage: substackctl feed crawl-all <publication> [--limit <n>] [--all] [--out <dir>] [--overwrite] [--no-retry]';
+  'usage: sub-cli feed crawl-all <publication> [--limit <n>] [--all] [--out <dir>] [--overwrite] [--no-retry]';
 
 export const crawlCommand: Subcommand = {
   name: 'crawl',
@@ -80,7 +80,7 @@ export const crawlAllCommand: Subcommand = {
       ? await crawlArchiveWithPacing(env, base, retry)
       : await scanRecent(env, base, limit ?? DEFAULT_LIMIT, retry);
     if (posts.length === 0) {
-      env.stderr.write('substackctl: no posts found\n');
+      env.stderr.write('sub-cli: no posts found\n');
       return EXIT_SUCCESS;
     }
     for (const post of posts) {
@@ -192,15 +192,15 @@ async function writeCrawledPost(
   const file = buildCrawledFile(post, base);
   const path = joinOut(outDir, `${file.dir}/${file.fileName}`);
   if (!overwrite && (await env.fs.exists(path))) {
-    env.stderr.write(`substackctl: skipped ${path} (already crawled)\n`);
+    env.stderr.write(`sub-cli: skipped ${path} (already crawled)\n`);
     return;
   }
   await env.fs.mkdir(joinOut(outDir, file.dir));
   await env.fs.writeFile(path, file.contents);
   if ((post.body_html ?? '').trim() === '') {
-    env.stderr.write(`substackctl: ${path}: no body in the post; wrote front matter only\n`);
+    env.stderr.write(`sub-cli: ${path}: no body in the post; wrote front matter only\n`);
   }
-  env.stderr.write(`substackctl: wrote ${path}\n`);
+  env.stderr.write(`sub-cli: wrote ${path}\n`);
 }
 
 /** JSON string escaping is a valid YAML double-quoted scalar. */
