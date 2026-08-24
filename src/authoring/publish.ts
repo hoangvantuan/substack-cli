@@ -91,7 +91,8 @@ export const publishCommand: Subcommand = {
       }
       const audience = flag('audience') ?? post.fields['audience'] ?? 'everyone';
       if (!(audience in AUDIENCES)) {
-        throw new Error(`invalid audience "${audience}": expected everyone, only_paid, only_free, or founding`);
+        const complaint = `invalid audience "${audience}": expected everyone, only_paid, only_free, or founding`;
+        throw flag('audience') === undefined ? new Error(complaint) : new UsageError(complaint);
       }
       const { document, warnings } = convertMarkdownToDocument(post.body);
       for (const warning of warnings) {
@@ -103,7 +104,9 @@ export const publishCommand: Subcommand = {
       }
       prepared = { title, subtitle: post.fields['subtitle'] ?? '', body: JSON.stringify(document), audience };
     } else if (flag('audience') !== undefined && !(flag('audience')! in AUDIENCES)) {
-      throw new Error(`invalid audience "${flag('audience')}": expected everyone, only_paid, only_free, or founding`);
+      throw new UsageError(
+        `invalid audience "${flag('audience')}": expected everyone, only_paid, only_free, or founding`,
+      );
     }
     const config = await loadConfig(env);
     const profile = resolveProfile(env, config, flag('profile'));
@@ -112,6 +115,10 @@ export const publishCommand: Subcommand = {
       `substackctl: publishing on profile ${profile.name ?? 'environment'} (${profile.publication}); this cannot be undone\n`,
     );
     const client = new SubstackClient(env, profile.publication, profile.cookie);
+    // Set once a draft exists that this command made: a failure after that
+    // point must not leave it behind. A draft named by --id is never removed;
+    // it was not ours to create.
+    let createdId: number | undefined;
     try {
       let draftId: number;
       if (prepared !== undefined) {
@@ -124,13 +131,23 @@ export const publishCommand: Subcommand = {
           audience: prepared.audience,
         });
         draftId = draft.id;
+        createdId = draft.id;
+        // The publish endpoint refuses a draft that never went through a
+        // publish-settings save once the publication has sections: it answers
+        // 400 {"error":"Please choose a section."}. This one-field update is
+        // that save, exactly as `post schedule` does before a release.
+        await client.updateDraft(draftId, { section_chosen: true });
       } else {
         const existing = await client.getDraft(id!);
         draftId = existing.id;
         const audience = flag('audience');
-        if (audience !== undefined) {
-          await client.updateDraft(draftId, { audience });
-        }
+        // `section_chosen` rides the same request as the audience patch: a
+        // draft created by `post create` does not carry it, so publishing
+        // one would otherwise fail on a publication that has sections.
+        await client.updateDraft(draftId, {
+          section_chosen: true,
+          ...(audience === undefined ? {} : { audience }),
+        });
       }
       await runPrepublishCheck(client, draftId, env);
       const published = await client.publishDraft(draftId, {
@@ -142,6 +159,15 @@ export const publishCommand: Subcommand = {
       }
       return EXIT_SUCCESS;
     } catch (error) {
+      if (createdId !== undefined) {
+        // A draft created here but never published is invisible clutter, the
+        // same rule `post create` and `post schedule` follow.
+        try {
+          await client.deleteDraft(createdId);
+        } catch {
+          env.stderr.write(`warning: could not remove the leftover draft ${createdId}\n`);
+        }
+      }
       if (error instanceof AuthError) {
         env.stderr.write(`substackctl: ${error.message}\n`);
         return EXIT_AUTH;

@@ -177,13 +177,15 @@ test('publishing a file creates and publishes in one command', async () => {
     [
       'GET /api/v1/publication/users',
       'POST /api/v1/drafts',
+      'PUT /api/v1/drafts/777',
       'GET /api/v1/drafts/777/prepublish',
       'POST /api/v1/drafts/777/publish',
     ],
   );
   const created = JSON.parse(h.requests[1]!.body!);
   assert.equal(created.audience, 'only_paid');
-  const published = JSON.parse(h.requests[3]!.body!);
+  assert.deepEqual(JSON.parse(h.requests[2]!.body!), { section_chosen: true });
+  const published = JSON.parse(h.requests[4]!.body!);
   assert.deepEqual(published, { send: true, share_automatically: false });
   assert.match(h.stdout(), /published 777/);
   assert.match(h.stdout(), /url: https:\/\/envpub\.substack\.com\/p\/hello-world/);
@@ -209,7 +211,7 @@ test('--no-send publishes to the web without sending the email, and flags overri
   assert.equal(code, 0);
   const created = JSON.parse(h.requests[1]!.body!);
   assert.equal(created.audience, 'everyone');
-  const published = JSON.parse(h.requests[3]!.body!);
+  const published = JSON.parse(h.requests[4]!.body!);
   assert.deepEqual(published, { send: false, share_automatically: false });
 });
 
@@ -260,7 +262,7 @@ test('--id publishes an existing draft and --audience patches the draft first', 
     h.requests.map((request) => `${request.method} ${new URL(request.url).pathname}`),
     ['GET /api/v1/drafts/777', 'PUT /api/v1/drafts/777', 'GET /api/v1/drafts/777/prepublish', 'POST /api/v1/drafts/777/publish'],
   );
-  assert.deepEqual(JSON.parse(h.requests[1]!.body!), { audience: 'only_free' });
+  assert.deepEqual(JSON.parse(h.requests[1]!.body!), { section_chosen: true, audience: 'only_free' });
   assert.deepEqual(JSON.parse(h.requests[3]!.body!), { send: true, share_automatically: false });
   assert.match(h.stdout(), /published 777/);
 });
@@ -281,7 +283,40 @@ test('--id without --audience leaves the stored recipient group untouched', asyn
   });
   const code = await runCli(['post', 'publish', '--id', '777', '--yes'], h.env);
   assert.equal(code, 0);
-  assert.ok(!h.requests.some((request) => request.method === 'PUT'));
+  // The publish-settings save still goes out; only the audience stays out of it.
+  const patches = h.requests.filter((request) => request.method === 'PUT');
+  assert.equal(patches.length, 1);
+  assert.deepEqual(JSON.parse(patches[0]!.body!), { section_chosen: true });
+});
+
+test('a draft with a section but no publish-settings save is still published', async () => {
+  // The real API answers 400 {"error":"Please choose a section."} for a draft
+  // that carries draft_section_id but never had section_chosen saved, which is
+  // exactly what `post create --section` leaves behind.
+  const h = envWithFiles({
+    files: {},
+    vars: ENV_PROFILE,
+    route: (request) => {
+      if (request.method === 'POST' && request.url.endsWith('/publish')) {
+        const saved = h.requests.some(
+          (earlier) =>
+            earlier.method === 'PUT' &&
+            earlier.url.endsWith('/api/v1/drafts/777') &&
+            JSON.parse(earlier.body!).section_chosen === true,
+        );
+        return saved
+          ? jsonResponse(PUBLISHED)
+          : jsonResponse({ error: 'Please choose a section.', type: 'single' }, 400);
+      }
+      if (request.url.endsWith('/prepublish')) {
+        return jsonResponse({ errors: [], suggestions: [] });
+      }
+      return jsonResponse({ ...DRAFT, draft_section_id: 448651 });
+    },
+  });
+  const code = await runCli(['post', 'publish', '--id', '777', '--yes'], h.env);
+  assert.equal(code, 0);
+  assert.match(h.stdout(), /published 777/);
 });
 
 test('publishing a nonexistent identifier fails before anything is sent', async () => {
@@ -300,12 +335,67 @@ test('publishing a nonexistent identifier fails before anything is sent', async 
   assert.ok(!h.requests.some((request) => request.url.endsWith('/publish')));
 });
 
-test('an invalid audience is rejected before anything is sent', async () => {
+test('an invalid --audience is a usage error rejected before anything is sent', async () => {
   const h = envWithFiles({ files: { 'post.md': GOOD_POST }, vars: ENV_PROFILE, route: () => jsonResponse({}) });
   const code = await runCli(['post', 'publish', 'post.md', '--yes', '--audience', 'nobody'], h.env);
+  assert.equal(code, 2);
+  assert.match(h.stderr(), /invalid audience "nobody"/);
+  assert.equal(h.requests.length, 0);
+});
+
+test('an audience the file names badly is a run failure, not a usage error', async () => {
+  const post = GOOD_POST.replace('audience: only_paid', 'audience: nobody');
+  const h = envWithFiles({ files: { 'post.md': post }, vars: ENV_PROFILE, route: () => jsonResponse({}) });
+  const code = await runCli(['post', 'publish', 'post.md', '--yes'], h.env);
   assert.equal(code, 1);
   assert.match(h.stderr(), /invalid audience "nobody"/);
   assert.equal(h.requests.length, 0);
+});
+
+test('a draft created here is removed when publishing fails afterwards', async () => {
+  const h = envWithFiles({
+    files: { 'post.md': GOOD_POST },
+    vars: ENV_PROFILE,
+    route: (request) => {
+      if (request.method === 'GET' && request.url.endsWith('/api/v1/publication/users')) {
+        return jsonResponse([{ id: 5, role: 'admin', is_byline_only: false }]);
+      }
+      if (request.method === 'POST' && request.url.endsWith('/api/v1/drafts')) {
+        return jsonResponse(DRAFT);
+      }
+      if (request.url.endsWith('/prepublish')) {
+        return jsonResponse({ errors: [], suggestions: [] });
+      }
+      if (request.method === 'POST' && request.url.endsWith('/publish')) {
+        return jsonResponse({ error: 'Please choose a section.', type: 'single' }, 400);
+      }
+      return jsonResponse(DRAFT);
+    },
+  });
+  const code = await runCli(['post', 'publish', 'post.md', '--yes'], h.env);
+  assert.equal(code, 1);
+  assert.match(h.stderr(), /Please choose a section/);
+  const removal = h.requests.find((request) => request.method === 'DELETE');
+  assert.equal(removal?.url, 'https://envpub.substack.com/api/v1/drafts/777');
+});
+
+test('a draft named by --id is never removed when publishing fails', async () => {
+  const h = envWithFiles({
+    files: {},
+    vars: ENV_PROFILE,
+    route: (request) => {
+      if (request.url.endsWith('/prepublish')) {
+        return jsonResponse({ errors: [], suggestions: [] });
+      }
+      if (request.method === 'POST' && request.url.endsWith('/publish')) {
+        return jsonResponse({ error: 'Please choose a section.', type: 'single' }, 400);
+      }
+      return jsonResponse(DRAFT);
+    },
+  });
+  const code = await runCli(['post', 'publish', '--id', '777', '--yes'], h.env);
+  assert.equal(code, 1);
+  assert.ok(!h.requests.some((request) => request.method === 'DELETE'));
 });
 
 test('slug, section, and cover front matter warn instead of being applied silently', async () => {
