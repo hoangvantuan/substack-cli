@@ -91,3 +91,65 @@ test('section set verifies against draft_section_id and fails the run when it do
   assert.equal(code, 1);
   assert.match(h.stderr(), /did not stick/);
 });
+
+test('section add creates the section and reports its identifier', async () => {
+  const h = sectionEnv([
+    jsonResponse(SECTIONS),
+    jsonResponse({ section: { id: 9, name: 'Notes', slug: 'notes' } }),
+  ]);
+  const code = await runCli(['section', 'add', 'Notes', 'Short field notes'], h.env);
+  assert.equal(code, 0);
+  assert.deepEqual(
+    h.requests.map((request) => `${request.method} ${new URL(request.url).pathname}`),
+    ['GET /api/v1/publication/sections', 'POST /api/v1/publication/sections'],
+  );
+  assert.deepEqual(JSON.parse(h.requests[1]!.body!), { name: 'Notes', description: 'Short field notes' });
+  assert.match(h.stdout(), /^section 9\n/);
+  assert.match(h.stdout(), /slug: notes/);
+});
+
+test('section add without a description is a usage error and sends nothing', async () => {
+  const h = sectionEnv([jsonResponse(SECTIONS)]);
+  const code = await runCli(['section', 'add', 'Notes'], h.env);
+  assert.equal(code, 2);
+  assert.match(h.stderr(), /missing <description>/);
+  assert.equal(h.requests.length, 0);
+});
+
+test('section add refuses a name the publication already uses without creating anything', async () => {
+  const h = sectionEnv([jsonResponse(SECTIONS)]);
+  const code = await runCli(['section', 'add', 'Essays', 'Long reads'], h.env);
+  assert.equal(code, 2);
+  assert.match(h.stderr(), /section already exists: Essays/);
+  assert.ok(!h.requests.some((request) => request.method === 'POST'));
+});
+
+test('section remove deletes the section named by name, slug, or id', async () => {
+  for (const target of ['Essays', 'essays', '8']) {
+    const h = sectionEnv([jsonResponse(SECTIONS), jsonResponse('1')]);
+    const code = await runCli(['section', 'remove', target, '--yes'], h.env);
+    assert.equal(code, 0, `target ${target} should be resolved`);
+    assert.deepEqual(
+      h.requests.map((request) => `${request.method} ${new URL(request.url).pathname}`),
+      ['GET /api/v1/publication/sections', 'DELETE /api/v1/publication/sections/8'],
+    );
+    assert.match(h.stdout(), /removed 8 \(Essays\)/);
+  }
+});
+
+test('section remove without --yes refuses and sends nothing', async () => {
+  const h = sectionEnv([jsonResponse(SECTIONS)]);
+  const code = await runCli(['section', 'remove', 'Essays'], h.env);
+  assert.equal(code, 2);
+  assert.match(h.stderr(), /without --yes/);
+  assert.equal(h.requests.length, 0);
+});
+
+test('section remove names the available sections when the target is unknown', async () => {
+  const h = sectionEnv([jsonResponse(SECTIONS)]);
+  const code = await runCli(['section', 'remove', 'Missing', '--yes'], h.env);
+  assert.equal(code, 2);
+  assert.match(h.stderr(), /unknown section "Missing"/);
+  assert.match(h.stderr(), /available sections: News, Essays/);
+  assert.ok(!h.requests.some((request) => request.method === 'DELETE'));
+});

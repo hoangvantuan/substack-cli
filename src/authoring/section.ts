@@ -62,6 +62,105 @@ const listCommand: Subcommand = {
   },
 };
 
+const addCommand: Subcommand = {
+  name: 'add',
+  description: 'create a section on the publication',
+  usage: 'usage: substackctl section add <name> <description> [--profile <name>]',
+  async run(argv, env) {
+    const parsed = parseArgv(argv, { strings: ['profile'] });
+    const name = parsed.positionals[0];
+    if (name === undefined || name === '') {
+      throw new UsageError('missing <name>');
+    }
+    // Substack answers 400 for a missing or empty description, so the
+    // command asks for one rather than letting the API refuse the call.
+    const description = parsed.positionals[1];
+    if (description === undefined || description === '') {
+      throw new UsageError('missing <description>: Substack refuses a section without one');
+    }
+    if (parsed.positionals.length > 2) {
+      throw new UsageError(`unexpected argument: ${parsed.positionals[2]}`);
+    }
+    const config = await loadConfig(env);
+    const profile = resolveProfile(env, config, profileFlag(parsed.values.get('profile')));
+    warnIfCookieStale(env, profile);
+    env.stderr.write(
+      `substackctl: adding section "${name}" on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+    );
+    const client = new SubstackClient(env, profile.publication, profile.cookie);
+    try {
+      // The duplicate is caught here so the failure names the collision; the
+      // API only answers "You already have a section with that name".
+      const existing = await client.listSections();
+      if (existing.some((section) => section.name === name)) {
+        throw new UsageError(`section already exists: ${name}`);
+      }
+      const created = await client.createSection(name, description);
+      env.stdout.write(`section ${created.id}\n`);
+      env.stdout.write(`name: ${created.name}\n`);
+      env.stdout.write(`slug: ${created.slug}\n`);
+      return EXIT_SUCCESS;
+    } catch (error) {
+      if (error instanceof AuthError) {
+        env.stderr.write(`substackctl: ${error.message}\n`);
+        return 3;
+      }
+      throw error;
+    }
+  },
+};
+
+const removeCommand: Subcommand = {
+  name: 'remove',
+  description: 'delete a section from the publication',
+  usage: 'usage: substackctl section remove <name-or-id> --yes [--profile <name>]',
+  async run(argv, env) {
+    const parsed = parseArgv(argv, { strings: ['profile'], booleans: ['yes'] });
+    const target = parsed.positionals[0];
+    if (target === undefined || target === '') {
+      throw new UsageError('missing <name-or-id>');
+    }
+    if (parsed.positionals.length > 1) {
+      throw new UsageError(`unexpected argument: ${parsed.positionals[1]}`);
+    }
+    // Posts survive their section's removal, but the grouping does not come
+    // back and every post filed under it loses its section, so the command
+    // asks for the same confirmation `post delete` does.
+    if (parsed.values.get('yes') !== true) {
+      throw new UsageError('refusing to delete a section without --yes; the section cannot be restored');
+    }
+    const config = await loadConfig(env);
+    const profile = resolveProfile(env, config, profileFlag(parsed.values.get('profile')));
+    warnIfCookieStale(env, profile);
+    env.stderr.write(
+      `substackctl: removing section "${target}" on profile ${profile.name ?? 'environment'} (${profile.publication})\n`,
+    );
+    const client = new SubstackClient(env, profile.publication, profile.cookie);
+    try {
+      const sections = await client.listSections();
+      const section = matchSection(sections, target) ??
+        (/^\d+$/.test(target)
+          ? sections.find((entry) => entry.id === Number(target))
+          : undefined);
+      if (section === undefined) {
+        const available = sections.length === 0
+          ? 'the publication has no sections'
+          : `available sections: ${sections.map((entry) => entry.name).join(', ')}`;
+        throw new UsageError(`unknown section "${target}" (${available})`);
+      }
+      await client.deleteSection(section.id);
+      env.stdout.write(`removed ${section.id} (${section.name})\n`);
+      return EXIT_SUCCESS;
+    } catch (error) {
+      if (error instanceof AuthError) {
+        env.stderr.write(`substackctl: ${error.message}\n`);
+        return 3;
+      }
+      throw error;
+    }
+  },
+};
+
 const setCommand: Subcommand = {
   name: 'set',
   description: 'assign a section to several posts in one command',
@@ -131,9 +230,14 @@ function matchSection(sections: SectionSummary[], name: string): SectionSummary 
   return sections.find((entry) => entry.name === name || entry.slug === name);
 }
 
+/** Reads the --profile flag, which every subcommand in this group accepts. */
+function profileFlag(value: string | boolean | undefined): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 export const sectionGroup: CommandGroup = {
   name: 'section',
   description: 'manage the publication\'s sections',
   usage: SECTION_GROUP_USAGE,
-  subcommands: [listCommand, setCommand],
+  subcommands: [listCommand, addCommand, removeCommand, setCommand],
 };
