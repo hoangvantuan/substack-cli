@@ -1,6 +1,14 @@
-import { groups } from './commands.js';
+import { groups, type CommandGroup } from './commands.js';
 import type { Env } from './env/types.js';
-import { EXIT_FAILURE, EXIT_RATE_LIMIT, EXIT_USAGE, RateLimitedError, UsageError } from './exit.js';
+import {
+  EXIT_FAILURE,
+  EXIT_RATE_LIMIT,
+  EXIT_SUCCESS,
+  EXIT_USAGE,
+  RateLimitedError,
+  UsageError,
+} from './exit.js';
+import { cliVersion } from './version.js';
 
 /**
  * The whole CLI as a pure function: takes an argument vector (the arguments
@@ -25,6 +33,18 @@ async function dispatch(argv: string[], env: Env): Promise<number> {
     printTopUsage(env);
     return EXIT_USAGE;
   }
+  if (head === '--version' || head === 'version') {
+    const [extra] = rest;
+    if (extra !== undefined) {
+      env.stderr.write(`unexpected argument: ${extra}\n`);
+      return EXIT_USAGE;
+    }
+    env.stdout.write(`${cliVersion()}\n`);
+    return EXIT_SUCCESS;
+  }
+  if (head === '--help' || head === 'help') {
+    return helpTopic(rest, env);
+  }
   const group = groups.find((candidate) => candidate.name === head);
   if (group === undefined) {
     env.stderr.write(`unknown command: ${head}\n`);
@@ -35,6 +55,15 @@ async function dispatch(argv: string[], env: Env): Promise<number> {
   if (subName === undefined) {
     env.stderr.write(`missing subcommand\n${group.usage}\n`);
     return EXIT_USAGE;
+  }
+  if (subName === 'help' || subName === '--help') {
+    const [extra] = args;
+    if (extra !== undefined) {
+      env.stderr.write(`unexpected argument: ${extra}\n`);
+      return EXIT_USAGE;
+    }
+    printGroupHelp(group, env);
+    return EXIT_SUCCESS;
   }
   const subcommand = group.subcommands.find((candidate) => candidate.name === subName);
   if (subcommand === undefined) {
@@ -58,4 +87,44 @@ function printTopUsage(env: Env): void {
     lines.push(`  ${group.name.padEnd(8)}${group.description}`);
   }
   env.stderr.write(lines.join('\n') + '\n');
+}
+
+/** Handles `substackctl help` and `substackctl help <command>`. */
+function helpTopic(topics: string[], env: Env): number {
+  const [topic, ...extra] = topics;
+  if (extra.length > 0) {
+    env.stderr.write(`unexpected argument: ${extra[0]}\n`);
+    return EXIT_USAGE;
+  }
+  if (topic === undefined) {
+    printTopHelp(env);
+    return EXIT_SUCCESS;
+  }
+  const group = groups.find((candidate) => candidate.name === topic);
+  if (group === undefined) {
+    env.stderr.write(`unknown command: ${topic}\n`);
+    printTopUsage(env);
+    return EXIT_USAGE;
+  }
+  printGroupHelp(group, env);
+  return EXIT_SUCCESS;
+}
+
+function printTopHelp(env: Env): void {
+  const width = Math.max(...groups.map((group) => group.name.length));
+  const lines = ['usage: substackctl <command> [options]', '', 'commands:'];
+  for (const group of groups) {
+    lines.push(`  ${group.name.padEnd(width)}  ${group.description}`);
+  }
+  lines.push('', 'options:', '  --help     show this help', '  --version  print the version');
+  env.stdout.write(lines.join('\n') + '\n');
+}
+
+function printGroupHelp(group: CommandGroup, env: Env): void {
+  const width = Math.max(...group.subcommands.map((subcommand) => subcommand.name.length));
+  const lines = [group.usage, '', 'subcommands:'];
+  for (const subcommand of group.subcommands) {
+    lines.push(`  ${subcommand.name.padEnd(width)}  ${subcommand.description}`);
+  }
+  env.stdout.write(lines.join('\n') + '\n');
 }

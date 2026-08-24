@@ -53,6 +53,13 @@ override any stored profile when both are set.
 
 ## Command surface
 
+General:
+
+```
+substackctl help [command]   # top-level help, or one command group's help
+substackctl --version
+```
+
 Reading — no cookie, works on any public publication:
 
 ```
