@@ -25,6 +25,18 @@ export interface HttpClient {
   request(request: HttpRequest): Promise<HttpResponse>;
 }
 
+export interface ExecResult {
+  /** The child's exit code; nonzero also when the command could not start. */
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+export interface Executor {
+  /** Runs one command to completion, capturing its output. */
+  run(command: string, args: readonly string[]): Promise<ExecResult>;
+}
+
 export interface WriteFileOptions {
   /** POSIX permission bits applied when the file is created. */
   mode?: number;
@@ -37,10 +49,11 @@ export interface FileSystem {
   mkdir(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
   /**
-   * Reads a whole file and returns it base64-encoded so binary assets such
-   * as images survive the read without a UTF-8 round trip corrupting bytes.
-   * Optional because only flows that read binary assets (image upload) need
-   * it; substituted test environments without it never exercise those.
+   * Reads a whole file and returns its base64-encoded contents so binary
+   * assets such as images survive the read without a UTF-8 round trip
+   * corrupting bytes. Optional because only flows that read binary assets
+   * (image upload) need it; substituted test environments without it never
+   * exercise those.
    */
   readFileBase64?(path: string): Promise<string>;
 }
@@ -57,6 +70,7 @@ export interface StdinSource {
 
 export interface Env {
   http: HttpClient;
+  exec: Executor;
   fs: FileSystem;
   stdin: StdinSource;
   stdout: Writer;

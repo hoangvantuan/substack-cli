@@ -1,10 +1,12 @@
+import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import type { Env, HttpRequest, HttpResponse } from './types.js';
+import type { Env, ExecResult, HttpRequest, HttpResponse } from './types.js';
 
 /** Builds the environment backed by the real process, network, and filesystem. */
 export function createRealEnv(): Env {
   return {
     http: { request: (request) => realRequest(request) },
+    exec: { run: runChild },
     fs: {
       readFile: (path) => readFile(path, 'utf8'),
       readFileBase64: async (path) => (await readFile(path)).toString('base64'),
@@ -47,7 +49,15 @@ async function realRequest(request: HttpRequest): Promise<HttpResponse> {
   });
   return { status: response.status, headers, body: await response.text() };
 }
-
+/**
+ * Runs a child command to completion with captured output. It blocks while
+ * the child runs: `substackctl update` is the only caller and has nothing
+ * else to do meanwhile. A null status means the child could not start.
+ */
+async function runChild(command: string, args: readonly string[]): Promise<ExecResult> {
+  const result = spawnSync(command, [...args], { encoding: 'utf8', env: process.env });
+  return { code: result.status ?? 1, stdout: result.stdout, stderr: result.stderr };
+}
 async function readStdin(): Promise<string> {
   const decoder = new TextDecoder();
   let text = '';

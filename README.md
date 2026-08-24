@@ -58,7 +58,14 @@ General:
 ```
 substackctl help [command]   # top-level help, or one command group's help
 substackctl --version
+substackctl update           # self-update to the latest npm release
 ```
+
+After a real command the CLI may print a one-line "update available" notice
+on stderr, checked at most once a day and cached under the config directory.
+Set `SUBSTACKCTL_NO_UPDATE_CHECK=1` to silence it. `substackctl update`
+installs the latest release when the CLI lives in an npm install; otherwise
+it prints the exact command to run.
 
 Reading — no cookie, works on any public publication:
 

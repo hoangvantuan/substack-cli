@@ -2,12 +2,14 @@ import type { Env, HttpRequest, HttpResponse } from '../src/env/types.js';
 
 /**
  * A substituted environment for driving the CLI through its argument vector.
- * Records issued HTTP requests, sleeps, and output streams so tests can assert
- * on observable behaviour only.
+ * Records issued HTTP requests, child commands, sleeps, and output streams
+ * so tests can assert on observable behaviour only.
  */
 export interface TestHarness {
   env: Env;
   requests: HttpRequest[];
+  /** Every child command the CLI ran, in order. */
+  execs: Array<{ command: string; args: string[] }>;
   sleeps: number[];
   stdout(): string;
   stderr(): string;
@@ -17,6 +19,7 @@ export function makeEnv(
   respond?: (request: HttpRequest, index: number) => HttpResponse | Promise<HttpResponse>,
 ): TestHarness {
   const requests: HttpRequest[] = [];
+  const execs: Array<{ command: string; args: string[] }> = [];
   const sleeps: number[] = [];
   const out: string[] = [];
   const err: string[] = [];
@@ -29,6 +32,13 @@ export function makeEnv(
         const response = await handler(request, index);
         index += 1;
         return response;
+      },
+    },
+    exec: {
+      // Succeeds by default; tests override env.exec when they need a failure.
+      run: async (command, args) => {
+        execs.push({ command, args: [...args] });
+        return { code: 0, stdout: '', stderr: '' };
       },
     },
     fs: {
@@ -44,10 +54,12 @@ export function makeEnv(
     sleep: async (ms) => {
       sleeps.push(ms);
     },
-    vars: {},
+    // The update warning has its own suite; every other test stays offline
+    // and deterministic by default.
+    vars: { SUBSTACKCTL_NO_UPDATE_CHECK: '1' },
     homedir: () => '/home/tester',
   };
-  return { env, requests, sleeps, stdout: () => out.join(''), stderr: () => err.join('') };
+  return { env, requests, execs, sleeps, stdout: () => out.join(''), stderr: () => err.join('') };
 }
 
 export function jsonResponse(

@@ -90,6 +90,16 @@ substackctl section remove <name-or-id> --yes
 substackctl section set <section-name> <id...>
 ```
 
+Self-maintenance:
+
+```
+substackctl update   # installs the latest npm release of the CLI
+```
+
+After real commands the CLI may print a one-line "update available" notice
+on stderr, at most once a day. Silence it with SUBSTACKCTL_NO_UPDATE_CHECK=1.
+Neither the notice nor `update` touches posts or profiles.
+
 A post file is Markdown with YAML-ish front matter carrying all metadata —
 `title` (required), plus `subtitle`, `section`, `cover`, `audience`
 (`everyone|only_paid|only_free|founding`), and `slug`. The body is Markdown;

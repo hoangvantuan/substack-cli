@@ -9,6 +9,8 @@ import {
   UsageError,
 } from './exit.js';
 import { cliVersion } from './version.js';
+import { warnIfUpdateAvailable } from './update/check.js';
+import { runUpdate } from './update/update.js';
 
 /**
  * The whole CLI as a pure function: takes an argument vector (the arguments
@@ -25,6 +27,20 @@ export async function runCli(argv: string[], env: Env): Promise<number> {
     }
     return EXIT_FAILURE;
   }
+}
+
+/**
+ * The bin entry point: runs the CLI, then follows real commands (never
+ * help, version, update, or usage errors) with the daily update notice.
+ * The notice can never change the exit code.
+ */
+export async function runCliWithUpdateNotice(argv: string[], env: Env): Promise<number> {
+  const code = await runCli(argv, env);
+  const [head] = argv;
+  if (head !== undefined && groups.some((group) => group.name === head)) {
+    await warnIfUpdateAvailable(env);
+  }
+  return code;
 }
 
 async function dispatch(argv: string[], env: Env): Promise<number> {
@@ -44,6 +60,9 @@ async function dispatch(argv: string[], env: Env): Promise<number> {
   }
   if (head === '--help' || head === 'help') {
     return helpTopic(rest, env);
+  }
+  if (head === 'update') {
+    return runUpdate(rest, env);
   }
   const group = groups.find((candidate) => candidate.name === head);
   if (group === undefined) {
@@ -111,11 +130,12 @@ function helpTopic(topics: string[], env: Env): number {
 }
 
 function printTopHelp(env: Env): void {
-  const width = Math.max(...groups.map((group) => group.name.length));
+  const width = Math.max(...groups.map((group) => group.name.length), 'update'.length);
   const lines = ['usage: substackctl <command> [options]', '', 'commands:'];
   for (const group of groups) {
     lines.push(`  ${group.name.padEnd(width)}  ${group.description}`);
   }
+  lines.push(`  ${'update'.padEnd(width)}  self-update to the latest npm release`);
   lines.push('', 'options:', '  --help     show this help', '  --version  print the version');
   env.stdout.write(lines.join('\n') + '\n');
 }
