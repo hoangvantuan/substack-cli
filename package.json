@@ -21,6 +21,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "prepack": "npm run build",
     "pretest": "npm run build",
     "test": "node --test \"dist/test/*.test.js\"",
     "test:integration": "npm run build && node --test --test-concurrency=1 \"dist/test/integration/*.test.js\""

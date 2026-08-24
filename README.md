@@ -8,16 +8,17 @@ Requires Node.js 24 or later. No runtime dependencies.
 
 ## Installation
 
-From a clone of this repository:
-
 ```
-npm install
-npm run build
-npm link          # puts `substackctl` on your PATH
+npm install -g substackctl
 ```
 
-Once the package is published, `npx substackctl` will work without any global
-install (see "Releasing" below for the current publish status).
+Or run it without a global install:
+
+```
+npx substackctl <command> ...
+```
+
+For hacking on the tool itself, see [Development](#development) below.
 
 ## Profile setup
 
@@ -155,14 +156,14 @@ npm run test:integration   # real-API suite; needs SUBSTACK_COOKIE +
                            # SUBSTACK_PUBLICATION_URL (see .env.example);
                            # never runs under npm test or CI
 ```
-
 ## Releasing
 
-The npm publish workflow exists but publishing was deliberately deferred;
-nothing has been claimed yet. When ready: create an npm account, add an
-automation token as the `NPM_TOKEN` repository secret, then
-`git tag v0.1.0 && git push origin v0.1.0`. Every later release is just
-another tag push.
+0.1.0 was published manually from a maintainer machine. Later releases go
+through CI: create a granular access token on npmjs.com (packages: read and
+write, limited to `substackctl`), add it as the `NPM_TOKEN` repository secret
+(Settings > Secrets and variables > Actions), then
+`git tag vX.Y.Z && git push origin vX.Y.Z`. The Release workflow publishes
+with provenance attestation; every release is just another tag push.
 
 ## Documentation
 
