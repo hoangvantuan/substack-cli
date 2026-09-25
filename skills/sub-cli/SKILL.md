@@ -47,8 +47,11 @@ errors. Use it when you want fast failure instead of waiting (e.g. in
   `feed crawl-all`. These never touch profiles.
 - Create drafts: `post create <file>` (add `--dry-run` first to preview the
   exact request). Drafts are private and reversible.
-- Adjust drafts: `post update`, `section set`, `post unschedule`. Read the
-  publication's sections with `section list`.
+- Adjust drafts and scheduled posts: `post update`, `section set`,
+  `post unschedule`. Read the publication's sections with `section list`.
+  `post update` and `section set` refuse a published post (its fields would be
+  staged and never go live); changing a published post is `post revise`'s
+  job, which this release does not have yet.
 - Delete drafts and scheduled posts: `post delete <id> --yes`.
 
 ## What needs human confirmation first
@@ -103,7 +106,7 @@ sub-cli feed crawl-all <publication> [--limit n] [--all] [--out dir] [--overwrit
 ```
 sub-cli post create <file> --profile <name> [--dry-run] [--title t] [--subtitle s] [--section name] [--cover url] [--audience a] [--slug slug]
 sub-cli post list --profile <name> [--state draft|scheduled|published] [--limit n] [--json] [--no-retry]
-sub-cli post update <id> --profile <name> [--section name] [--subtitle s] [--slug slug]
+sub-cli post update <id> --profile <name> [--file path] [--section name] [--subtitle s] [--cover url] [--slug slug] [--dry-run]
 sub-cli post schedule <file> <time> --profile <name> [--audience a]
 sub-cli post unschedule <id> --profile <name>
 sub-cli post publish <file|--id id> --profile <name> --yes [--no-send] [--audience a]
@@ -139,6 +142,16 @@ Publishing via `--id` preserves the slug, section, and cover that
 `post create` already applied. Publishing directly from a file with
 `post publish <file>` only applies `title`, `subtitle`, and `audience`,
 and warns about the three it drops (`slug`, `section`, `cover`).
+
+### Replace a draft's content
+
+1. Edit the Markdown file (`title` required; the body replaces the draft's).
+2. Preview: `sub-cli post update <id> --file <file> --profile p --dry-run`
+3. Send: `sub-cli post update <id> --file <file> --profile p`
+
+Title and body always come from the file. Subtitle, cover, section, and slug
+change only when the front matter or a flag names them; otherwise they keep
+their current value. `audience` in the front matter is ignored with a warning.
 
 ### Schedule a post
 

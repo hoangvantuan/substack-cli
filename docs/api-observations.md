@@ -88,6 +88,40 @@ when a section is assigned. The populated fields are `draft_section_id`
 | GET | `/api/v1/drafts/{id}/prepublish` | — | `{errors[], suggestions[]}`. Flaky in practice; treat failures as advisory. |
 | POST | `/api/v1/drafts/{id}/publish` | `{send: boolean, share_automatically: false}` | Irreversible. `send:false` publishes to web only (`should_send_email:false`). |
 
+## Revising a published post
+
+Verified 2026-09-25 on the test publication (post 217407916), always with
+`send:false`.
+
+A published post carries two copies of its content in `GET /api/v1/drafts/{id}`:
+the live `title` / `subtitle` / `body` and the staged `draft_title` /
+`draft_subtitle` / `draft_body`. Not every field is staged:
+
+| Field | `PUT /api/v1/drafts/{id}` on a published post |
+|---|---|
+| `draft_title`, `draft_subtitle`, `draft_body` | **Staged.** The live fields and the public `/api/v1/posts/{slug}` stay unchanged until the post is published again. The response still answers 200, so a PUT alone looks like success while readers see nothing. |
+| `slug` | **Live immediately**, no republish needed. |
+| `cover_image` | **Live immediately** (there is no `draft_cover_image`). |
+| `draft_section_id` | **Staged** (verified 2026-09-25 on post 212499592). The PUT answers 200 and the draft read shows the new `draft_section_id`, but the live `section_id` on the draft read and on the public `/api/v1/posts/{slug}` stay unchanged, still so after 5 s. A republish copies it: post 217407916 reads `section_id` = `draft_section_id` after its revise spike. `PUT {draft_section_id: null}` clears the staged value. |
+
+Calling `POST /api/v1/drafts/{id}/publish` again with `send:false` copies the
+staged fields to the live ones. Observed on that republish: `post_date`
+unchanged, `email_sent_at` stays null, `should_send_email` stays false,
+`updated_at` moves.
+
+Staged changes the owner saved in the web editor but never pushed show up as
+`title != draft_title`, `subtitle != draft_subtitle`, or `body != draft_body`.
+Any republish pushes them along with whatever the caller changed.
+
+### Old slug after a slug change
+
+There is no redirect. The old URL keeps answering 200, both on
+`/api/v1/posts/{old}` and on `/p/{old}`, but it serves a **frozen copy**: the
+content as of the slug change, with its canonical link pointing at the old
+slug. Later revisions reach only the new slug. (A slug that never existed
+answers 302.) Whether the frozen copy expires was not observed beyond a few
+minutes.
+
 ## Images
 
 | Method | Path | Payload | Notes |

@@ -81,7 +81,7 @@ Writing — uses a profile:
 sub-cli post create <file> [--dry-run] [--title t] [--subtitle s]
                               [--section name] [--cover url] [--audience a] [--slug slug]
 sub-cli post list [--state draft|scheduled|published] [--limit n] [--json] [--no-retry]
-sub-cli post update <id> [--section name] [--subtitle s] [--slug slug]
+sub-cli post update <id> [--file path] [--section name] [--subtitle s] [--cover url] [--slug slug] [--dry-run]
 sub-cli post schedule <file> <time> [--audience a]
 sub-cli post unschedule <id>
 sub-cli post delete <id> --yes [--force-published]
@@ -90,6 +90,15 @@ sub-cli section add <name> <description>
 sub-cli section remove <name-or-id> --yes
 sub-cli section set <section-name> <id...> [--no-retry]
 ```
+
+`post update` and `section set` change drafts and scheduled posts only. They
+read the post's state first and refuse a published post, because on a
+published post those fields are staged and never go live (ADR-0006); a
+published post is changed with `post revise`, which is not in this release
+yet. `post update <id> --file post.md` replaces the title and body from the
+file through the same conversion as `post create`, uploading local images the
+same way. Subtitle, cover, section, and slug change only when the front matter
+or a flag names them; the front matter `audience` is ignored with a warning.
 
 Publishing — irreversible, guarded twice per ADR-0004:
 

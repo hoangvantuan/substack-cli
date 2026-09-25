@@ -32,6 +32,7 @@ function sectionEnv(responses: HttpResponse[], sleeps: number[] = []) {
 }
 
 const SECTIONS = [{ id: 7, name: 'News', slug: 'news' }, { id: 8, name: 'Essays', slug: 'essays' }];
+const DRAFT_STATE = { id: 21, slug: null, draft_section_id: null, is_published: false, post_date: null };
 
 test('section list prints a table of the publication sections', async () => {
   const h = sectionEnv([jsonResponse(SECTIONS)]);
@@ -52,8 +53,10 @@ test('section list --json emits the sections', async () => {
 test('section set files several posts in one command, pacing between requests', async () => {
   const h = sectionEnv([
     jsonResponse(SECTIONS),
+    jsonResponse(DRAFT_STATE),
     jsonResponse({ id: 21, slug: null, draft_section_id: 7 }),
     jsonResponse({ id: 21, slug: null, draft_section_id: 7 }),
+    jsonResponse(DRAFT_STATE),
     jsonResponse({ id: 22, slug: null, draft_section_id: 7 }),
     jsonResponse({ id: 22, slug: null, draft_section_id: 7 }),
   ]);
@@ -72,6 +75,24 @@ test('section set files several posts in one command, pacing between requests', 
   assert.deepEqual(sleeps, [500], 'one pace between the two assignment requests');
 });
 
+test('section set skips a published post with a pointer to post revise and files the rest', async () => {
+  const h = sectionEnv([
+    jsonResponse(SECTIONS),
+    jsonResponse({ ...DRAFT_STATE, id: 21, is_published: true, post_date: '2026-08-01T09:00:00Z' }),
+    jsonResponse({ ...DRAFT_STATE, id: 22 }),
+    jsonResponse({ id: 22, slug: null, draft_section_id: 7 }),
+    jsonResponse({ id: 22, slug: null, draft_section_id: 7 }),
+  ]);
+  const code = await runCli(['section', 'set', 'News', '21', '22'], h.env);
+  assert.equal(code, 1, 'a skipped post fails the run');
+  assert.match(h.stderr(), /post 21 is published/);
+  assert.match(h.stderr(), /sub-cli post revise 21 --section "News"/);
+  const puts = h.requests.filter((request) => request.method === 'PUT');
+  assert.deepEqual(puts.map((request) => request.url), ['https://envpub.substack.com/api/v1/drafts/22']);
+  assert.doesNotMatch(h.stdout(), /filed 21/);
+  assert.match(h.stdout(), /filed 22 under News/);
+});
+
 test('section set with an unknown section names what exists and sends no writes', async () => {
   const h = sectionEnv([jsonResponse(SECTIONS)]);
   const code = await runCli(['section', 'set', 'Nope', '21'], h.env);
@@ -84,6 +105,7 @@ test('section set with an unknown section names what exists and sends no writes'
 test('section set verifies against draft_section_id and fails the run when it does not stick', async () => {
   const h = sectionEnv([
     jsonResponse(SECTIONS),
+    jsonResponse(DRAFT_STATE),
     jsonResponse({ id: 21, slug: null, draft_section_id: 7 }),
     jsonResponse({ id: 21, slug: null, draft_section_id: null }),
   ]);

@@ -163,7 +163,7 @@ const removeCommand: Subcommand = {
 
 const setCommand: Subcommand = {
   name: 'set',
-  description: 'assign a section to several posts in one command',
+  description: 'assign a section to several drafts or scheduled posts in one command',
   usage: 'usage: sub-cli section set <section-name> <id...> [--profile <name>] [--no-retry]',
   async run(argv, env) {
     const parsed = parseArgv(argv, { strings: ['profile'], booleans: ['no-retry'] });
@@ -204,6 +204,16 @@ const setCommand: Subcommand = {
         const id = Number(ids[index]);
         if (index > 0) {
           await env.sleep(SECTION_SET_PACE_MS);
+        }
+        // On a published post draft_section_id is staged: the PUT answers
+        // 200 but the live section never changes (docs/api-observations.md).
+        if ((await client.draftState(id)).published) {
+          failures += 1;
+          env.stderr.write(
+            `sub-cli: post ${id} is published; its section would be staged and never go live. ` +
+              `Skipped. To change it, use: sub-cli post revise ${id} --section "${section.name}"\n`,
+          );
+          continue;
         }
         await client.updateDraft(id, { draft_section_id: section.id });
         const fields = await client.draftFields(id);

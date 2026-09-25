@@ -46,6 +46,19 @@ A post with a future release time. Unscheduling returns it to a draft.
 A post that is public and whose email has been sent to subscribers. It cannot
 be recalled.
 
+**Revise**:
+To change a published post in place: its content, metadata, or both. The post
+stays published, keeps its publish date, and no email is sent again. Revising
+is public the moment it lands, so it is guarded like publishing.
+_Avoid_: republish, edit, update (reserved for adjusting drafts and for
+updating the CLI itself)
+
+**Pending changes**:
+Edits to a published post that were saved but have not gone live, typically
+made in Substack's web editor without pressing Update. Revising would push
+them live along with the revision, so they must be resolved first.
+_Avoid_: unsaved changes, staged draft
+
 **Section**:
 A category defined by the publication owner to group posts. It can be assigned
 to a draft, but only by a later update, never at creation time.

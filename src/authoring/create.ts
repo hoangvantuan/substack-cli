@@ -1,7 +1,4 @@
 import { parseArgv } from '../args.js';
-import { parsePostFile } from '../conversion/frontmatter.js';
-import { convertMarkdownToDocument } from '../conversion/markdown.js';
-import { validateDocument } from '../conversion/schema.js';
 import type { Subcommand } from '../commands.js';
 import type { Env } from '../env/types.js';
 import { EXIT_AUTH, EXIT_SUCCESS, UsageError } from '../exit.js';
@@ -9,6 +6,7 @@ import { loadConfig } from '../profiles/config.js';
 import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import { dirnameOf, localImageSources, uploadLocalImages } from './images.js';
 import { AuthError, SubstackClient } from './api.js';
+import { convertPostBody, readPostSource } from './content.js';
 
 export const createUsage =
   'usage: sub-cli post create <file> [--profile <name>] [--dry-run] [--title <t>]\n' +
@@ -35,16 +33,7 @@ export const createCommand: Subcommand = {
       throw new UsageError(`unexpected argument: ${parsed.positionals[1]}`);
     }
     const dryRun = parsed.values.get('dry-run') === true;
-    let contents: string;
-    try {
-      contents = await env.fs.readFile(file);
-    } catch (error) {
-      throw new Error(`cannot read ${file}: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    const post = parsePostFile(contents);
-    for (const key of post.unknownFields) {
-      env.stderr.write(`warning: ignoring unknown front matter field: ${key}\n`);
-    }
+    const post = await readPostSource(env, file);
     const flag = (name: string): string | undefined => {
       const value = parsed.values.get(name);
       return typeof value === 'string' ? value : undefined;
@@ -70,14 +59,7 @@ export const createCommand: Subcommand = {
     if (cover !== undefined && !/^https?:\/\//i.test(cover)) {
       throw new Error(`invalid cover "${cover}": must be an http(s) URL`);
     }
-    const { document, warnings } = convertMarkdownToDocument(post.body);
-    for (const warning of warnings) {
-      env.stderr.write(`warning: ${warning}\n`);
-    }
-    const violations = validateDocument(document);
-    if (violations.length > 0) {
-      throw new Error(`document failed local schema validation: ${violations[0]}`);
-    }
+    const document = convertPostBody(env, post.body);
     if (dryRun) {
       const locals = localImageSources(document);
       if (locals.length > 0) {
