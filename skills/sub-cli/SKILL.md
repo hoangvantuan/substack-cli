@@ -5,7 +5,8 @@ description: Manage posts on your Substack publication and read other people's n
 
 # sub-cli
 
-Requires `sub-cli` 0.4.0 or later. The skill is installed by hand and not
+Requires `sub-cli` 0.4.0 or later; `post revise` and `post update --file`
+need 0.5.0 or later. The skill is installed by hand and not
 version-locked to the package: if a flag below is rejected as unknown, the
 installed CLI is older than this skill assumes, fall back to the usage line
 the command prints and confirm the difference with the human.
@@ -49,9 +50,10 @@ errors. Use it when you want fast failure instead of waiting (e.g. in
   exact request). Drafts are private and reversible.
 - Adjust drafts and scheduled posts: `post update`, `section set`,
   `post unschedule`. Read the publication's sections with `section list`.
-  `post update` and `section set` refuse a published post (its fields would be
-  staged and never go live); a published post is changed with `post revise`,
-  which needs confirmation (below).
+  The post's state picks the command: `post update` and `section set` for
+  drafts and scheduled posts, `post revise` for published posts (it needs
+  confirmation, below). Run the one you think fits; a wrong guess exits 1
+  and stderr names the right command, so switch to it.
 - Delete drafts and scheduled posts: `post delete <id> --yes`.
 
 ## What needs human confirmation first
@@ -163,16 +165,29 @@ their current value. `audience` in the front matter is ignored with a warning.
 
 ### Revise a published post
 
-1. Edit the Markdown file, or start from the live version: the backup a
-   previous revision printed, or `feed crawl <url>` (drop its extra keys).
-2. Preview: `sub-cli post revise <id> <file> --profile p --dry-run`; check
-   `pending_changes` is empty.
-3. Show the human the preview and get a yes.
-4. Send: `sub-cli post revise <id> <file> --profile p --yes`. Report the
-   `backup:` path it prints; `post revise <id> <backup> --profile p --yes`
-   restores the previous title, subtitle, slug, cover, and body text.
+1. Get the source file: the file the post was published from, or the
+   `backup:` file a previous revision printed. `feed crawl <url>` also works,
+   but it reads without a cookie, so a paywalled post comes back truncated.
+2. Edit it. Title and body come from the file; subtitle, cover, section, and
+   slug change only when named. Metadata alone needs no file:
+   `post revise <id> --subtitle s --profile p --dry-run`.
+3. Preview: `sub-cli post revise <id> <file> --profile p --dry-run`. It prints
+   JSON with `requests` (the PUT and the `send:false` republish), `backup`
+   (where the live version will be saved), and `pending_changes`.
+4. Show the human the preview and get a yes.
+5. Send the same command with `--yes` in place of `--dry-run`. Report the
+   `backup:` path it prints: `post revise <id> <backup> --profile p --yes`
+   restores the previous title, subtitle, slug, cover, and body text (not
+   the section).
 
-Metadata alone needs no file: `post revise <id> --subtitle s --profile p --yes`.
+A refusal exits 1 and changes nothing. Read stderr:
+
+| stderr says | Meaning | Action |
+|---|---|---|
+| `published posts only` | The post is a draft or scheduled. | Use `post update <id>`. |
+| `pending changes (...)` | The human saved edits in Substack's editor that are not live; a republish would push them too. | Ask the human: publish or discard them in the editor, or overwrite the listed fields in this revision. |
+| `refusing to change the URL` | The file or `--slug` names a new slug. | Ask the human. With a yes, add `--change-url`; otherwise drop the slug. |
+| `did not go live: <fields>` (after sending) | The republish landed but some fields do not show live. | Report the fields and the backup path; retry only with the human. |
 
 ### Schedule a post
 
