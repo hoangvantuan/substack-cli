@@ -34,13 +34,11 @@ export function resolveProfile(
   config: ProfileConfig,
   explicitName?: string,
 ): ResolvedProfile {
-  const publicationVar = env.vars['SUBSTACK_PUBLICATION_URL'];
-  const cookieVar = env.vars['SUBSTACK_COOKIE'];
-  if (publicationVar !== undefined && publicationVar !== '' && cookieVar !== undefined && cookieVar !== '') {
+  if (hasEnvironmentProfile(env)) {
     return {
       name: null,
-      publication: publicationBaseUrl(publicationVar),
-      cookie: unwrapCookie(cookieVar),
+      publication: publicationBaseUrl(env.vars['SUBSTACK_PUBLICATION_URL']!),
+      cookie: unwrapCookie(env.vars['SUBSTACK_COOKIE']!),
       cookieSetAt: null,
     };
   }
@@ -65,6 +63,17 @@ export function resolveProfile(
       ? `no profile to act on (${availableProfiles(config)})`
       : `no profile given and no default profile is set (${availableProfiles(config)})`,
   );
+}
+
+/**
+ * True when the two environment variables name the publication and the
+ * cookie directly. They stand in for an explicit --profile, which is what
+ * lets the commands guarded by ADR 0004 accept them.
+ */
+export function hasEnvironmentProfile(env: Env): boolean {
+  const publication = env.vars['SUBSTACK_PUBLICATION_URL'];
+  const cookie = env.vars['SUBSTACK_COOKIE'];
+  return publication !== undefined && publication !== '' && cookie !== undefined && cookie !== '';
 }
 
 /** Warns on the error stream when the cookie may soon be expired. */

@@ -5,6 +5,7 @@ import { listCommand } from './authoring/list.js';
 import { deleteCommand } from './authoring/delete.js';
 import { publishCommand } from './authoring/publish.js';
 import { updateCommand } from './authoring/update.js';
+import { reviseCommand } from './authoring/revise.js';
 import { sectionGroup } from './authoring/section.js';
 import { scheduleCommand } from './authoring/schedule.js';
 import { unscheduleCommand } from './authoring/unschedule.js';
@@ -41,7 +42,7 @@ export const groups: CommandGroup[] = [
     name: 'post',
     description: 'author posts on your own publication',
     usage: 'usage: sub-cli post <subcommand> [options]',
-    subcommands: [createCommand, listCommand, deleteCommand, publishCommand, updateCommand, scheduleCommand, unscheduleCommand],
+    subcommands: [createCommand, listCommand, deleteCommand, publishCommand, updateCommand, reviseCommand, scheduleCommand, unscheduleCommand],
   },
   sectionGroup,
 ];

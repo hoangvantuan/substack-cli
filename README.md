@@ -94,8 +94,7 @@ sub-cli section set <section-name> <id...> [--no-retry]
 `post update` and `section set` change drafts and scheduled posts only. They
 read the post's state first and refuse a published post, because on a
 published post those fields are staged and never go live (ADR-0006); a
-published post is changed with `post revise`, which is not in this release
-yet. `post update <id> --file post.md` replaces the title and body from the
+published post is changed with `post revise` (below). `post update <id> --file post.md` replaces the title and body from the
 file through the same conversion as `post create`, uploading local images the
 same way. Subtitle, cover, section, and slug change only when the front matter
 or a flag names them; the front matter `audience` is ignored with a warning.
@@ -106,6 +105,37 @@ Publishing — irreversible, guarded twice per ADR-0004:
 sub-cli post publish <file> --profile p --yes [--no-send] [--audience a]
 sub-cli post publish --id <n> --profile p --yes [--no-send] [--audience a]
 ```
+
+Revising a published post (public at once, guarded the same way):
+
+```
+sub-cli post revise <id> [file] --profile p --yes [--title t] [--subtitle s]
+                                [--section name] [--cover url] [--slug slug --change-url] [--dry-run]
+```
+
+`post revise` changes a published post in place and republishes it with
+`send:false`: the change goes live, the publish date stays, and no email is
+sent again (there is no way to re-send it). It refuses drafts and scheduled
+posts with a pointer to `post update`, and follows the same field rule: title
+and body from the file, everything else only when named; `audience` is ignored
+with a warning. Before writing it:
+
+- refuses when the post has pending changes (edits saved in Substack's web
+  editor but never pushed, in the title, subtitle, body, or section) that the
+  revision would not overwrite, since republishing would push them too;
+- saves the live version as Markdown to
+  `~/.config/sub-cli/backups/<publication>/<id>-<timestamp>.md` and prints the
+  path; the backup is itself a revise file, so `post revise <id> <backup>`
+  restores the title, subtitle, slug, cover, and body text (not the section,
+  and not embeds the Markdown conversion cannot carry);
+- refuses a slug change unless `--change-url` is passed: there is no redirect,
+  and the old URL keeps serving a frozen copy that later revisions never
+  reach. A slug equal to the current one is a no-op.
+
+After the republish it reads the post back and fails if a field it sent did
+not go live. `--dry-run` needs `--profile` but not `--yes`, reads the post
+once, and prints the requests, the backup path, and the pending-changes check
+without writing anything.
 
 Commands that talk to the API retry on rate limits with a paced backoff
 ladder, then exit 4. Pass `--no-retry` to make a single attempt instead;
@@ -162,8 +192,8 @@ Substack's schema has no node for.
 
 The repository ships `skills/sub-cli/SKILL.md`, a skill file that teaches
 AI coding agents the CLI's judgement calls: which operations are safe to run
-unattended, which need human confirmation (publishing, deleting published
-posts), what each exit code calls for, and the habit of passing `--profile`
+unattended, which need human confirmation (publishing, revising or deleting
+published posts), what each exit code calls for, and the habit of passing `--profile`
 explicitly and reading `--json`.
 
 Install it by hand by copying the directory into your agent's skill folder:

@@ -6,7 +6,7 @@ import type { Subcommand } from '../commands.js';
 import type { Env } from '../env/types.js';
 import { EXIT_AUTH, EXIT_SUCCESS, UsageError } from '../exit.js';
 import { loadConfig } from '../profiles/config.js';
-import { resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
+import { hasEnvironmentProfile, resolveProfile, warnIfCookieStale } from '../profiles/resolve.js';
 import { AuthError, SubstackClient } from './api.js';
 
 export const publishUsage =
@@ -45,12 +45,7 @@ export const publishCommand: Subcommand = {
     // --profile (or the two environment variables, which name the publication
     // and the cookie directly) plus an explicit --yes unlock it.
     const missing: string[] = [];
-    const hasEnvProfile =
-      env.vars['SUBSTACK_PUBLICATION_URL'] !== undefined &&
-      env.vars['SUBSTACK_PUBLICATION_URL'] !== '' &&
-      env.vars['SUBSTACK_COOKIE'] !== undefined &&
-      env.vars['SUBSTACK_COOKIE'] !== '';
-    if (flag('profile') === undefined && !hasEnvProfile) {
+    if (flag('profile') === undefined && !hasEnvironmentProfile(env)) {
       missing.push('--profile <name>');
     }
     if (parsed.values.get('yes') !== true) {

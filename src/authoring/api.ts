@@ -58,6 +58,23 @@ export interface AuthoringPost {
 
 export type PostState = 'draft' | 'scheduled' | 'published';
 
+/** A post's live and staged fields, as `post revise` compares them. */
+export interface RevisionRecord {
+  published: boolean;
+  scheduled: boolean;
+  slug: string | null;
+  title: string | null;
+  draft_title: string | null;
+  subtitle: string | null;
+  draft_subtitle: string | null;
+  /** The live body, a stringified ProseMirror document. */
+  body: string | null;
+  draft_body: string | null;
+  section_id: number | null;
+  draft_section_id: number | null;
+  cover_image: string | null;
+}
+
 /**
  * The authoring API client: one profile's cookie against one publication.
  * Every request carries the cookie, goes through the shared retry logic, and
@@ -220,10 +237,8 @@ export class SubstackClient {
    * so destructive commands never trust their arguments about state.
    */
   async draftState(id: number): Promise<{ published: boolean; scheduled: boolean }> {
-    const raw = asRecord(await this.request('GET', `/api/v1/drafts/${id}`), `GET /api/v1/drafts/${id}`);
-    const published = raw['is_published'] === true;
-    const dated = typeof raw['post_date'] === 'string' && raw['post_date'] !== '';
-    return { published, scheduled: !published && dated };
+    const { published, scheduled } = await this.revisionRecord(id);
+    return { published, scheduled };
   }
 
   /**
@@ -265,6 +280,42 @@ export class SubstackClient {
       draft_section_id: typeof raw['draft_section_id'] === 'number' ? raw['draft_section_id'] : null,
       draft_subtitle: typeof raw['draft_subtitle'] === 'string' ? raw['draft_subtitle'] : null,
     };
+  }
+
+  /**
+   * Reads a post with both copies of its content: the live fields readers
+   * see and the staged `draft_*` fields a PUT writes. On a published post
+   * they differ until the post is published again (see "Revising a
+   * published post" in docs/api-observations.md).
+   */
+  async revisionRecord(id: number): Promise<RevisionRecord> {
+    const raw = asRecord(await this.request('GET', `/api/v1/drafts/${id}`), `GET /api/v1/drafts/${id}`);
+    const text = (key: string): string | null => (typeof raw[key] === 'string' ? (raw[key] as string) : null);
+    const number = (key: string): number | null => (typeof raw[key] === 'number' ? (raw[key] as number) : null);
+    const published = raw['is_published'] === true;
+    const dated = typeof raw['post_date'] === 'string' && raw['post_date'] !== '';
+    return {
+      published,
+      scheduled: !published && dated,
+      slug: text('slug') === '' ? null : text('slug'),
+      title: text('title'),
+      draft_title: text('draft_title'),
+      subtitle: text('subtitle'),
+      draft_subtitle: text('draft_subtitle'),
+      body: text('body'),
+      draft_body: text('draft_body'),
+      section_id: number('section_id'),
+      draft_section_id: number('draft_section_id'),
+      cover_image: text('cover_image') === '' ? null : text('cover_image'),
+    };
+  }
+
+  /**
+   * The public post object for a slug, carrying `body_html`. Sent with the
+   * cookie, so the owner reads the whole body even behind a paywall.
+   */
+  async publicPost(slug: string): Promise<Record<string, unknown>> {
+    return asRecord(await this.request('GET', `/api/v1/posts/${slug}`), `GET /api/v1/posts/${slug}`);
   }
 
   /**

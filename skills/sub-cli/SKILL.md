@@ -1,6 +1,6 @@
 ---
 name: sub-cli
-description: Manage posts on your Substack publication and read other people's newsletters from the command line. Use when creating, listing, updating, scheduling, publishing, or deleting posts; filing posts into sections; or scanning and crawling public Substack content.
+description: Manage posts on your Substack publication and read other people's newsletters from the command line. Use when creating, listing, updating, scheduling, publishing, revising, or deleting posts; filing posts into sections; or scanning and crawling public Substack content.
 ---
 
 # sub-cli
@@ -50,8 +50,8 @@ errors. Use it when you want fast failure instead of waiting (e.g. in
 - Adjust drafts and scheduled posts: `post update`, `section set`,
   `post unschedule`. Read the publication's sections with `section list`.
   `post update` and `section set` refuse a published post (its fields would be
-  staged and never go live); changing a published post is `post revise`'s
-  job, which this release does not have yet.
+  staged and never go live); a published post is changed with `post revise`,
+  which needs confirmation (below).
 - Delete drafts and scheduled posts: `post delete <id> --yes`.
 
 ## What needs human confirmation first
@@ -59,6 +59,13 @@ errors. Use it when you want fast failure instead of waiting (e.g. in
 - **Publishing** (`post publish`) is irreversible: it cannot be recalled and
   may email subscribers. The tool also demands an explicit `--profile` and
   `--yes`; treat those as a second lock, not permission to skip asking.
+- **Revising a published post** (`post revise <id> [file] --profile p --yes`)
+  changes what readers see the moment it lands. It never re-sends the email,
+  but show the human the `--dry-run` preview and ask first. If it refuses
+  because of pending changes, those are the human's unpushed web-editor edits:
+  ask what to do, never overwrite them by naming the fields unasked. Never pass
+  `--change-url` without asking: the old URL keeps serving a frozen copy and
+  links to it never see later revisions.
 - **Deleting a published post** (`post delete <id> --yes --force-published`)
   removes it for every subscriber. Always ask.
 - **Changing the publication's sections** (`section add`, `section remove`)
@@ -110,6 +117,7 @@ sub-cli post update <id> --profile <name> [--file path] [--section name] [--subt
 sub-cli post schedule <file> <time> --profile <name> [--audience a]
 sub-cli post unschedule <id> --profile <name>
 sub-cli post publish <file|--id id> --profile <name> --yes [--no-send] [--audience a]
+sub-cli post revise <id> [file] --profile <name> --yes [--title t] [--subtitle s] [--section name] [--cover url] [--slug slug --change-url] [--dry-run]
 sub-cli post delete <id> --profile <name> --yes [--force-published]
 sub-cli section list --profile <name> [--json]
 sub-cli section add <name> <description> --profile <name>
@@ -152,6 +160,19 @@ and warns about the three it drops (`slug`, `section`, `cover`).
 Title and body always come from the file. Subtitle, cover, section, and slug
 change only when the front matter or a flag names them; otherwise they keep
 their current value. `audience` in the front matter is ignored with a warning.
+
+### Revise a published post
+
+1. Edit the Markdown file, or start from the live version: the backup a
+   previous revision printed, or `feed crawl <url>` (drop its extra keys).
+2. Preview: `sub-cli post revise <id> <file> --profile p --dry-run`; check
+   `pending_changes` is empty.
+3. Show the human the preview and get a yes.
+4. Send: `sub-cli post revise <id> <file> --profile p --yes`. Report the
+   `backup:` path it prints; `post revise <id> <backup> --profile p --yes`
+   restores the previous title, subtitle, slug, cover, and body text.
+
+Metadata alone needs no file: `post revise <id> --subtitle s --profile p --yes`.
 
 ### Schedule a post
 
