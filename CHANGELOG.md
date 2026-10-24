@@ -3,6 +3,14 @@
 All notable changes to `@tuanhv/sub-cli` are listed here. Versions follow
 semantic versioning; before 1.0, a minor bump can contain breaking changes.
 
+## [0.6.0] - 2026-10-24
+
+### Added
+- `image upload <file>...` uploads local image files and prints one hosted
+  URL per file on stdout, so a local cover can be set with
+  `--cover "$(sub-cli image upload cover.png)"`. A cover that is not an
+  http(s) URL is now refused with a pointer to this command.
+
 ## [0.5.0] - 2026-09-25
 
 ### Added

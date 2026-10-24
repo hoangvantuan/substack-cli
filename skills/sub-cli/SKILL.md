@@ -6,8 +6,8 @@ description: Manage posts on your Substack publication and read other people's n
 # sub-cli
 
 Requires `sub-cli` 0.4.0 or later; `post revise` and `post update --file`
-need 0.5.0 or later. The skill is installed by hand and not
-version-locked to the package: if a flag below is rejected as unknown, the
+need 0.5.0 or later, and `image upload` needs 0.6.0 or later. The skill is
+installed by hand and not version-locked to the package: if a flag below is rejected as unknown, the
 installed CLI is older than this skill assumes, fall back to the usage line
 the command prints and confirm the difference with the human.
 
