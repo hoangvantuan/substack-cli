@@ -89,6 +89,15 @@ sub-cli section list [--json]
 sub-cli section add <name> <description>
 sub-cli section remove <name-or-id> --yes
 sub-cli section set <section-name> <id...> [--no-retry]
+sub-cli image upload <file>...
+```
+
+`image upload` uploads local image files to the publication's image host and
+prints one hosted URL per file on stdout, nothing else. Use it to turn a local
+file into a cover, which only accepts an http(s) URL:
+
+```
+sub-cli post update 123 --cover "$(sub-cli image upload ./cover.png)"
 ```
 
 `post update` and `section set` change drafts and scheduled posts only. They
@@ -151,7 +160,7 @@ A post file is Markdown with front matter carrying all metadata:
 title: My post title        # required here or via --title
 subtitle: Optional subtitle
 section: Essays             # must already exist on the publication
-cover: https://.../img.png  # optional, http(s) only
+cover: https://.../img.png  # optional, http(s) only (see `image upload`)
 audience: everyone          # everyone | only_paid | only_free | founding
 slug: my-post-slug          # lowercase words separated by hyphens
 ---

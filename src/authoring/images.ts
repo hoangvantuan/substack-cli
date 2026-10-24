@@ -131,12 +131,21 @@ export async function uploadLocalImages(
     if (uploaded > 0) {
       await env.sleep(IMAGE_UPLOAD_PACE_MS);
     }
-    const hosted = await client.uploadImage(await toDataUri(env, entry.path));
+    const hosted = await uploadImageFile(env, client, entry.path);
     entry.node.attrs!['src'] = hosted.url;
     hostedByPath.set(entry.path, hosted.url);
     uploaded += 1;
   }
   return uploaded;
+}
+
+/** Uploads one local image file and returns where Substack now hosts it. */
+export async function uploadImageFile(
+  env: Env,
+  client: SubstackClient,
+  path: string,
+): Promise<{ id: number; url: string }> {
+  return client.uploadImage(await toDataUri(env, path));
 }
 
 async function toDataUri(env: Env, path: string): Promise<string> {

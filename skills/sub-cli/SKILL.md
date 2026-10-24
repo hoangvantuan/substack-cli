@@ -125,6 +125,7 @@ sub-cli section list --profile <name> [--json]
 sub-cli section add <name> <description> --profile <name>
 sub-cli section remove <name-or-id> --profile <name> --yes
 sub-cli section set <section-name> <id...> --profile <name> [--no-retry]
+sub-cli image upload <file>... --profile <name>
 ```
 
 ### Self-maintenance
@@ -211,7 +212,10 @@ A post file is Markdown with YAML-ish front matter carrying all metadata:
 unsupported constructs fail loudly instead of being dropped.
 
 `cover` is the header image and only ever a hosted http(s) URL; it never
-appears in the body. Body images written as local paths (relative to the
+appears in the body. For a local cover file, upload it first: `image upload`
+prints only the hosted URL on stdout (one line per file), so pass it straight
+through, e.g. `--cover "$(sub-cli image upload ./cover.png --profile <name>)"`,
+or paste the URL into the `cover:` front matter. Body images written as local paths (relative to the
 Markdown file) are uploaded by every sending command and rewritten to hosted
 URLs, so keep the image files next to the post. A missing file stops the
 command instead of producing a post with a broken image, and `--dry-run`

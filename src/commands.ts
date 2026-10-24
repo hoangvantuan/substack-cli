@@ -7,6 +7,7 @@ import { publishCommand } from './authoring/publish.js';
 import { updateCommand } from './authoring/update.js';
 import { reviseCommand } from './authoring/revise.js';
 import { sectionGroup } from './authoring/section.js';
+import { imageGroup } from './authoring/image.js';
 import { scheduleCommand } from './authoring/schedule.js';
 import { unscheduleCommand } from './authoring/unschedule.js';
 import { scanCommand } from './reading/scan.js';
@@ -45,4 +46,5 @@ export const groups: CommandGroup[] = [
     subcommands: [createCommand, listCommand, deleteCommand, publishCommand, updateCommand, reviseCommand, scheduleCommand, unscheduleCommand],
   },
   sectionGroup,
+  imageGroup,
 ];

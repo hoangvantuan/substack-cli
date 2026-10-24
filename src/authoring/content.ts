@@ -112,7 +112,7 @@ export async function readPostChange(env: Env, file: string | undefined, flags: 
     complain('slug', `invalid slug "${slug}": use lowercase words separated by single hyphens`);
   }
   if (cover !== undefined && !/^https?:\/\//i.test(cover)) {
-    complain('cover', `invalid cover "${cover}": must be an http(s) URL`);
+    complain('cover', `invalid cover "${cover}": must be an http(s) URL; upload a local file first with: sub-cli image upload <file>`);
   }
   if (title !== undefined) change.title = title;
   if (subtitle !== undefined) change.subtitle = subtitle;

@@ -119,7 +119,7 @@ export const scheduleCommand: Subcommand = {
     const section = post.fields['section'];
     const cover = post.fields['cover'];
     if (cover !== undefined && !/^https?:\/\//i.test(cover)) {
-      throw new Error(`invalid cover "${cover}": must be an http(s) URL`);
+      throw new Error(`invalid cover "${cover}": must be an http(s) URL; upload a local file first with: sub-cli image upload <file>`);
     }
     const slug = post.fields['slug'];
     if (slug !== undefined && !SLUG.test(slug)) {

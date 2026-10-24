@@ -57,7 +57,7 @@ export const createCommand: Subcommand = {
       throw new Error(`invalid slug "${slug}": use lowercase words separated by single hyphens`);
     }
     if (cover !== undefined && !/^https?:\/\//i.test(cover)) {
-      throw new Error(`invalid cover "${cover}": must be an http(s) URL`);
+      throw new Error(`invalid cover "${cover}": must be an http(s) URL; upload a local file first with: sub-cli image upload <file>`);
     }
     const document = convertPostBody(env, post.body);
     if (dryRun) {
