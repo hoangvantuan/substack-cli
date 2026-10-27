@@ -432,8 +432,11 @@ test('a local image src converts and stays in place for the upload step', () => 
   assert.equal(image?.attrs?.['src'], './diagram.png');
 });
 
-test('a table is rejected by name', () => {
-  reject('| a | b |\n| --- | --- |\n| 1 | 2 |', 'table');
+test('a table is rejected with a rewrite hint', () => {
+  reject(
+    '| a | b |\n| --- | --- |\n| 1 | 2 |',
+    '^table is not supported \\(line 2\\): rewrite the rows as a list or wrap the table in a fenced block \\(```\\)$',
+  );
 });
 
 test('a footnote reference is rejected by name', () => {

@@ -342,7 +342,9 @@ function parseParagraph(lines: Line[], start: number, context: Warnings): [numbe
       );
     }
     if (collected.length > 0 && isTableDelimiter(line.text) && collected[collected.length - 1]!.text.includes('|')) {
-      throw new ConversionError(`table is not supported (line ${line.number})`);
+      throw new ConversionError(
+        `table is not supported (line ${line.number}): rewrite the rows as a list or wrap the table in a fenced block (\`\`\`)`,
+      );
     }
     collected.push(line);
     i += 1;

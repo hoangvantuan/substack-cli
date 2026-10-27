@@ -220,3 +220,8 @@ Markdown file) are uploaded by every sending command and rewritten to hosted
 URLs, so keep the image files next to the post. A missing file stops the
 command instead of producing a post with a broken image, and `--dry-run`
 reports what would be uploaded without uploading it.
+
+Substack has no native table node, so GFM tables are rejected. Rewrite a table
+as one list item per row when the columns read fine as prose:
+`- **<row/key>**: <col 1>, <col 2>`. When column alignment matters, keep the
+table but wrap it in a fenced code block (```).
