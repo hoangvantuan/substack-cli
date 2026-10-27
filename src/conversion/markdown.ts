@@ -273,10 +273,16 @@ function parseListItem(lines: Line[], start: number, context: Warnings): [number
   const markerMatch = text.match(/^ *(?:([-+*])(?:[ \t]+(.*))?$|([0-9]{1,9})([.)])(?:[ \t]+(.*))?$)/)!;
   const markerWidth = markerMatch[0].replace(/[ \t]+.*$/, '').length;
   const firstContent = markerMatch[2] ?? markerMatch[5] ?? '';
-  const contentIndent = markerWidth + text.slice(markerWidth).match(/^[ \t]*/)![0].length;
+  const afterMarkerWidth = text.slice(markerWidth).match(/^[ \t]*/)![0].length;
+  const contentIndent = markerWidth + afterMarkerWidth;
   const itemLines: Line[] = [];
   if (firstContent !== '') {
-    itemLines.push({ text: `${' '.repeat(contentIndent)}${firstContent}`, number: lines[start]!.number });
+    if (afterMarkerWidth >= 5) {
+      throw new ConversionError(
+        `indented code block is not supported (line ${lines[start]!.number}): wrap the code in a fenced block (\`\`\`)`,
+      );
+    }
+    itemLines.push({ text: firstContent, number: lines[start]!.number });
   }
   let i = start + 1;
   let pendingBlank: Line | undefined;
