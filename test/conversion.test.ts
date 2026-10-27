@@ -232,6 +232,104 @@ test('list items may be multi-line paragraphs', () => {
   ]);
 });
 
+test('ordered list items numbered 10+ convert without triggering indented code block rejection', () => {
+  const doc = convert('9. chín\n10. mười');
+  assert.deepEqual(doc.content, [
+    {
+      type: 'ordered_list',
+      attrs: { order: 9 },
+      content: [
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'chín' }] }] },
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'mười' }] }] },
+      ],
+    },
+  ]);
+});
+
+test('ordered list items numbered 100+ keep attrs.order and convert inline content', () => {
+  const doc = convert('100. first\n101. second');
+  assert.deepEqual(doc.content, [
+    {
+      type: 'ordered_list',
+      attrs: { order: 100 },
+      content: [
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'first' }] }] },
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'second' }] }] },
+      ],
+    },
+  ]);
+});
+
+test('continuation lines and nested lists under 10. and 100. items parse relative to the marker column', () => {
+  const doc = convert('10. tenth\n    continued\n    - nested under 10\n100. hundredth\n     more text\n     - nested under 100');
+  assert.deepEqual(doc.content, [
+    {
+      type: 'ordered_list',
+      attrs: { order: 10 },
+      content: [
+        {
+          type: 'list_item',
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'tenth continued' }] },
+            {
+              type: 'bullet_list',
+              content: [
+                {
+                  type: 'list_item',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'nested under 10' }] }],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'list_item',
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'hundredth more text' }] },
+            {
+              type: 'bullet_list',
+              content: [
+                {
+                  type: 'list_item',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'nested under 100' }] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+});
+
+test('up to four spaces after a list marker converts as normal paragraph content', () => {
+  assert.deepEqual(convert('-    four').content, [
+    {
+      type: 'bullet_list',
+      content: [
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'four' }] }] },
+      ],
+    },
+  ]);
+  assert.deepEqual(convert('1.    four').content, [
+    {
+      type: 'ordered_list',
+      content: [
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'four' }] }] },
+      ],
+    },
+  ]);
+});
+
+test('five or more spaces after a list marker on the first line is rejected as an indented code block', () => {
+  reject('-     text', 'indented code block');
+  reject('10.     text', 'indented code block');
+});
+
+test('an indented code block inside a 10+ list item is still rejected', () => {
+  reject('10. item\n\n        indented code', 'indented code block.*line 3');
+});
+
 test('a blockquote wraps paragraphs and keeps inline marks', () => {
   const doc = convert('> quoted **bold** text');
   assert.deepEqual(doc.content, [
