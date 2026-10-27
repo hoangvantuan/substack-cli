@@ -3,6 +3,17 @@
 All notable changes to `@tuanhv/sub-cli` are listed here. Versions follow
 semantic versioning; before 1.0, a minor bump can contain breaking changes.
 
+## [0.6.1] - 2026-10-27
+
+### Fixed
+- Ordered list items numbered 10 or higher (`10. item`, `100. item`) with
+  text on the marker line no longer fail as an "indented code block". A list
+  item with up to four spaces after its marker now converts too; five or more
+  spaces is still refused as indented code.
+- A post containing a Markdown table is still refused, but the error now says
+  how to fix it: rewrite the rows as a list or wrap the table in a fenced
+  block.
+
 ## [0.6.0] - 2026-10-24
 
 ### Added
